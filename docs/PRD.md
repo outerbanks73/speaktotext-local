@@ -207,16 +207,18 @@ The transcription worker runs as a separate subprocess to solve critical issues:
 - Real-time transcription for tab recording
 - Transcript editing in UI
 - Export to SRT/VTT subtitle formats
+- **Markdown/Obsidian export** - Save transcripts as `.md` files with configurable templates, YAML frontmatter, and folder selection (works with Obsidian, Logseq, or any markdown-based system)
 
 ### 1.3.0 (Planned)
 - Multiple language detection and transcription
 - Custom vocabulary/terminology support
 - Batch file processing
+- **Notion integration** - OAuth-based export directly to Notion pages/databases
 
 ### 2.0.0 (Vision)
 - Standalone desktop app (Tauri)
 - Local model fine-tuning
-- Integration with note-taking apps (Obsidian, Notion)
+- Additional integrations (Google Docs, Confluence, Apple Notes)
 
 ---
 
