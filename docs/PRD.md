@@ -210,8 +210,12 @@ The transcription worker runs as a separate subprocess to solve critical issues:
 - ✅ **Markdown/Obsidian export** - Save transcripts as `.md` files with configurable templates, YAML frontmatter
 - ✅ **Custom storage folder** - Users can configure where downloaded media files are stored
 
-### 1.3.0 (Planned)
-- **Safari extension** - Same backend, cross-browser support (Chrome + Safari)
+### 1.3.0 (Released)
+- ✅ **Safari extension** - Same backend, cross-browser support (Chrome + Safari)
+- ✅ Build script for Safari (`build-safari.sh`)
+- ✅ Safari-compatible manifest without tabCapture
+- ✅ Automatic update notification system
+- ✅ Update scripts (`update.sh`, `update.bat`)
 
 ### 2.0.0 (Vision)
 - Standalone desktop app (Tauri)

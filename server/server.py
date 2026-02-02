@@ -30,7 +30,7 @@ import uvicorn
 app = FastAPI(
     title="SpeakToText Local",
     description="Local audio transcription server with speaker diarization",
-    version="1.2.0"
+    version="1.3.0"
 )
 
 # Allow CORS for Chrome extension

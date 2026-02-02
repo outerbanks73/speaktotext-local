@@ -97,20 +97,38 @@ start-server.bat       # Windows
 
 The server runs on `http://localhost:5123`
 
-### 4. Install Chrome Extension
+### 4. Install Browser Extension
 
+#### Chrome
 1. Open Chrome and go to `chrome://extensions`
 2. Enable **"Developer mode"** (toggle in top right)
 3. Click **"Load unpacked"**
 4. Select the `extension` folder from this project
 
+#### Safari (macOS only)
+1. Run the build script:
+   ```bash
+   ./build-safari.sh
+   ```
+2. Open the generated Xcode project:
+   ```bash
+   open "safari-extension/SpeakToText Local/SpeakToText Local.xcodeproj"
+   ```
+3. Select your Development Team in Signing & Capabilities
+4. Build and Run (⌘R)
+5. Enable in Safari → Preferences → Extensions
+
+**Note:** Tab recording is not available in Safari (browser API limitation).
+
 ### 5. Use It!
 
-1. Click the SpeakToText Local icon in Chrome toolbar
-2. Choose your input method (File, URL, or Record Tab)
+1. Click the SpeakToText Local icon in your browser toolbar
+2. Choose your input method (File, URL, or Record Tab*)
 3. Select a Whisper model
 4. Click Transcribe
 5. Copy or download your transcript
+
+*Tab recording is Chrome-only
 
 ---
 
@@ -205,12 +223,17 @@ speaktotext-local/
 │   ├── options.html/js  # Settings page
 │   ├── background.js
 │   └── icons/
+├── safari-extension/    # Safari extension
+│   ├── manifest.json    # Safari-compatible manifest
+│   └── README.md        # Safari build instructions
 ├── server/
 │   ├── server.py        # FastAPI server (job management, downloads)
 │   ├── worker.py        # Isolated transcription subprocess
 │   └── requirements.txt
 ├── install.sh           # macOS/Linux installer
 ├── install.bat          # Windows installer
+├── build-safari.sh      # Safari extension builder
+├── update.sh            # Update script
 └── start-server.sh      # Server launcher
 ```
 

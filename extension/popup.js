@@ -64,7 +64,7 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.2.0';
+const CURRENT_VERSION = '1.3.0';
 const GITHUB_REPO = 'outerbanks73/speaktotext-local';
 
 // Initialize
