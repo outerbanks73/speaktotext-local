@@ -209,14 +209,12 @@ The transcription worker runs as a separate subprocess to solve critical issues:
 - Export to SRT/VTT subtitle formats
 - **Markdown/Obsidian export** - Save transcripts as `.md` files with configurable templates, YAML frontmatter, and folder selection (works with Obsidian, Logseq, or any markdown-based system)
 
-### 1.3.0 (Planned)
-- Multiple language detection and transcription
-- Custom vocabulary/terminology support
-- Batch file processing
-
 ### 2.0.0 (Vision)
 - Standalone desktop app (Tauri)
 - Local model fine-tuning
+- Multiple language detection and transcription
+- Custom vocabulary/terminology support
+- Batch file processing
 - **Notion integration** - OAuth-based export directly to Notion pages/databases
 - Additional integrations (Google Docs, Confluence, Apple Notes)
 
