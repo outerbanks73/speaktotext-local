@@ -364,6 +364,80 @@
       margin: 16px;
     }
 
+    /* Pre-flight Dialog */
+    .dialog-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .dialog {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 320px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .dialog h3 {
+      font-size: 16px;
+      margin-bottom: 16px;
+      color: #1a1a1a;
+    }
+
+    .preflight-info {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 20px;
+    }
+
+    .preflight-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .preflight-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .preflight-row .label {
+      color: #6b6b6b;
+      font-size: 13px;
+    }
+
+    .preflight-row .value {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .dialog-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .dialog-buttons .btn {
+      flex: 1;
+    }
+
+    .btn-secondary {
+      background: #f0ede8;
+      color: #1a1a1a;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e2de;
+    }
+
     .recording-indicator {
       display: none;
       align-items: center;
@@ -411,7 +485,7 @@
 <body>
   <div class="header">
     <h1>SpeakToText Local</h1>
-    <p>Transform audio to AI-ready data · v1.4.2</p>
+    <p>Transform audio to AI-ready data · v1.5.0</p>
   </div>
 
   <div id="statusBar" class="status-bar disconnected">
@@ -438,16 +512,6 @@
         <div class="filename" id="fileName" style="display: none;"></div>
       </div>
     </div>
-    <div class="form-group">
-      <label>Whisper Model</label>
-      <select id="modelSelect">
-        <option value="base">Base (recommended)</option>
-        <option value="tiny">Tiny (fastest)</option>
-        <option value="small">Small (better accuracy)</option>
-        <option value="medium">Medium (high accuracy)</option>
-        <option value="large">Large (best accuracy)</option>
-      </select>
-    </div>
     <button class="btn btn-primary" id="transcribeFileBtn" disabled>
       Transcribe File
     </button>
@@ -456,21 +520,11 @@
   <!-- URL Tab -->
   <div id="tab-url" class="tab-content active">
     <p class="url-description">
-      We will download, then transcribe and save your clip.
+      Paste any video or audio URL. We'll automatically pick the best settings.
     </p>
     <div class="form-group">
       <label>Audio/Video URL</label>
       <input type="text" id="urlInput" placeholder="YouTube, podcast, or direct audio URL">
-    </div>
-    <div class="form-group">
-      <label>Whisper Model</label>
-      <select id="modelSelectUrl">
-        <option value="base">Base (recommended)</option>
-        <option value="tiny">Tiny (fastest)</option>
-        <option value="small">Small (better accuracy)</option>
-        <option value="medium">Medium (high accuracy)</option>
-        <option value="large">Large (best accuracy)</option>
-      </select>
     </div>
     <button class="btn btn-primary" id="transcribeUrlBtn">
       Transcribe URL
@@ -493,16 +547,6 @@
         <option value="realtime">Real-time (live transcription)</option>
       </select>
     </div>
-    <div class="form-group">
-      <label>Whisper Model</label>
-      <select id="modelSelectRecord">
-        <option value="tiny">Tiny (fastest - recommended for real-time)</option>
-        <option value="base">Base (recommended for standard)</option>
-        <option value="small">Small (better accuracy)</option>
-        <option value="medium">Medium (high accuracy)</option>
-        <option value="large">Large (best accuracy)</option>
-      </select>
-    </div>
     <button class="btn btn-record" id="startRecordBtn">
       Start Recording
     </button>
@@ -511,6 +555,27 @@
     </button>
     <div id="realtimeTranscript" style="display: none;">
       <em style="color: #999;">Live transcript will appear here...</em>
+    </div>
+  </div>
+
+  <!-- Pre-flight Confirmation Dialog -->
+  <div id="preflightDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog">
+      <h3 id="preflightTitle">Video Info</h3>
+      <div class="preflight-info">
+        <div class="preflight-row">
+          <span class="label">Duration:</span>
+          <span id="preflightDuration" class="value"></span>
+        </div>
+        <div class="preflight-row">
+          <span class="label">Estimated time:</span>
+          <span id="preflightEstimate" class="value"></span>
+        </div>
+      </div>
+      <div class="dialog-buttons">
+        <button class="btn btn-secondary" id="preflightCancel">Cancel</button>
+        <button class="btn btn-primary" id="preflightConfirm">Transcribe</button>
+      </div>
     </div>
   </div>
 

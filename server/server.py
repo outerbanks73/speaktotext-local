@@ -93,6 +93,79 @@ def get_python_executable():
 
 PYTHON_EXECUTABLE = get_python_executable()
 
+# Model processing speeds (real-time multiplier on CPU)
+# e.g., tiny processes 32x faster than real-time
+MODEL_SPEEDS = {
+    'tiny': 32,
+    'tiny.en': 32,
+    'base': 16,
+    'base.en': 16,
+    'small': 6,
+    'small.en': 6,
+    'medium': 2,
+    'medium.en': 2,
+    'large': 1,
+    'large-v2': 1,
+    'large-v3': 1,
+}
+
+def format_duration(seconds: int) -> str:
+    """Format seconds into human-readable duration."""
+    if seconds < 60:
+        return f"{seconds} seconds"
+    elif seconds < 3600:
+        mins = seconds // 60
+        return f"{mins} minute{'s' if mins != 1 else ''}"
+    else:
+        hours = seconds // 3600
+        mins = (seconds % 3600) // 60
+        if mins > 0:
+            return f"{hours}h {mins}m"
+        return f"{hours} hour{'s' if hours != 1 else ''}"
+
+def select_optimal_model(duration_seconds: int) -> str:
+    """Select the best model based on video duration.
+
+    Strategy: Use highest quality model that completes in reasonable time.
+    - Short videos (<10 min): base (good quality, fast enough)
+    - Medium videos (10-30 min): base (still reasonable)
+    - Long videos (30-60 min): tiny (speed over quality)
+    - Very long (>60 min): tiny (must be fast)
+    """
+    if duration_seconds <= 600:  # <= 10 minutes
+        return 'base'
+    elif duration_seconds <= 1800:  # <= 30 minutes
+        return 'base'
+    elif duration_seconds <= 3600:  # <= 60 minutes
+        return 'tiny'
+    else:  # > 60 minutes
+        return 'tiny'
+
+def calculate_timeout(duration_seconds: int, model: str) -> int:
+    """Calculate appropriate timeout based on video duration and model.
+
+    Formula: (duration / model_speed) * 1.5 + 180
+    - 1.5x safety margin for slower CPUs
+    - 180s buffer for download/conversion overhead
+    """
+    speed = MODEL_SPEEDS.get(model, 16)  # default to base speed
+    process_time = duration_seconds / speed
+    timeout = int((process_time * 1.5) + 180)
+    # Min 5 minutes, max 4 hours
+    return max(300, min(timeout, 14400))
+
+def calculate_estimates(duration_seconds: int) -> dict:
+    """Calculate estimated transcription time for each model."""
+    estimates = {}
+    for model in ['tiny', 'base', 'small', 'medium', 'large']:
+        speed = MODEL_SPEEDS.get(model, 16)
+        process_time = int(duration_seconds / speed) + 30  # 30s buffer
+        estimates[model] = {
+            'seconds': process_time,
+            'formatted': format_duration(process_time)
+        }
+    return estimates
+
 
 def cleanup_cache():
     """Remove cached files older than CACHE_MAX_AGE."""
@@ -194,12 +267,18 @@ def download_audio_from_url(url: str, job_id: str = None) -> str:
         raise Exception("yt-dlp not installed. Please install it with: brew install yt-dlp")
 
 
-def run_transcription_worker(job_id: str, audio_path: str, hf_token: Optional[str], model_name: str):
+def run_transcription_worker(job_id: str, audio_path: str, hf_token: Optional[str], model_name: str, timeout: int = 1800):
     """Run transcription in a separate subprocess to avoid stdout/stderr issues."""
     try:
         jobs[job_id]['status'] = 'processing'
         jobs[job_id]['stage'] = 'transcribing'
-        jobs[job_id]['progress'] = f'Transcribing with Whisper ({model_name})...'
+
+        # Show model being used and estimated time if available
+        estimated_time = jobs[job_id].get('estimated_time')
+        if estimated_time:
+            jobs[job_id]['progress'] = f'Transcribing with {model_name} (~{format_duration(estimated_time)} remaining)...'
+        else:
+            jobs[job_id]['progress'] = f'Transcribing with {model_name}...'
 
         # Build command to run worker script
         cmd = [
@@ -213,14 +292,13 @@ def run_transcription_worker(job_id: str, audio_path: str, hf_token: Optional[st
         if hf_token:
             cmd.extend(['--hf-token', hf_token])
 
-        # Run worker in subprocess - completely isolated stdout/stderr
-        # Use subprocess.DEVNULL for stderr to avoid broken pipe from tqdm progress bars
+        # Run worker in subprocess with dynamic timeout
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True,
-            timeout=1800  # 30 minute timeout
+            timeout=timeout
         )
 
         if result.returncode != 0:
@@ -243,7 +321,11 @@ def run_transcription_worker(job_id: str, audio_path: str, hf_token: Optional[st
 
     except subprocess.TimeoutExpired:
         jobs[job_id]['status'] = 'error'
-        jobs[job_id]['error'] = 'Transcription timed out after 30 minutes'
+        duration = jobs[job_id].get('duration_seconds')
+        if duration:
+            jobs[job_id]['error'] = f'Transcription timed out for this {format_duration(duration)} video. This is unusual - please try again.'
+        else:
+            jobs[job_id]['error'] = f'Transcription timed out after {format_duration(timeout)}. Try with a shorter video.'
     except Exception as e:
         jobs[job_id]['status'] = 'error'
         jobs[job_id]['error'] = str(e)
@@ -265,15 +347,24 @@ def process_transcription_thread(job_id: str, audio_path: str, hf_token: Optiona
     run_transcription_worker(job_id, audio_path, hf_token, model_name)
 
 
-def process_url_transcription(job_id: str, url: str, hf_token: Optional[str], model_name: str):
+def process_url_transcription(job_id: str, url: str, hf_token: Optional[str], model_name: str, timeout: int = 1800):
     """Background task for URL download and transcription."""
     try:
         jobs[job_id]['status'] = 'downloading'
         audio_path = download_audio_from_url(url, job_id)
-        run_transcription_worker(job_id, audio_path, hf_token, model_name)
+        run_transcription_worker(job_id, audio_path, hf_token, model_name, timeout)
     except Exception as e:
         jobs[job_id]['status'] = 'error'
-        jobs[job_id]['error'] = str(e)
+        duration = jobs[job_id].get('duration_seconds')
+        model = jobs[job_id].get('model', model_name)
+        if 'timeout' in str(e).lower():
+            # Provide helpful error for timeouts
+            if duration:
+                jobs[job_id]['error'] = f"Transcription timed out for this {format_duration(duration)} video using {model} model. The video may be too long for this model."
+            else:
+                jobs[job_id]['error'] = f"Transcription timed out. Try with a shorter video."
+        else:
+            jobs[job_id]['error'] = str(e)
 
 
 @app.get("/")
@@ -435,31 +526,107 @@ async def stop_realtime(session_id: str):
     }
 
 
+@app.post("/transcribe/preflight")
+async def preflight_check(url: str = Form(...)):
+    """Get video duration and metadata without downloading.
+
+    Uses yt-dlp --dump-json to fetch metadata quickly.
+    Returns duration, title, and estimated transcription times.
+    """
+    try:
+        result = subprocess.run(
+            ['yt-dlp', '--dump-json', '--no-download', url],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            # Try to extract error message
+            error_msg = result.stderr or "Failed to get video info"
+            return {"error": error_msg, "duration_seconds": None}
+
+        metadata = json.loads(result.stdout)
+        duration_seconds = int(metadata.get('duration', 0))
+        title = metadata.get('title', 'Unknown')
+
+        # Calculate estimates and select optimal model
+        estimates = calculate_estimates(duration_seconds)
+        recommended_model = select_optimal_model(duration_seconds)
+        timeout = calculate_timeout(duration_seconds, recommended_model)
+
+        return {
+            "duration_seconds": duration_seconds,
+            "duration_formatted": format_duration(duration_seconds),
+            "title": title,
+            "estimates": estimates,
+            "recommended_model": recommended_model,
+            "timeout_seconds": timeout
+        }
+
+    except subprocess.TimeoutExpired:
+        return {"error": "Metadata fetch timed out", "duration_seconds": None}
+    except json.JSONDecodeError:
+        return {"error": "Failed to parse video metadata", "duration_seconds": None}
+    except FileNotFoundError:
+        return {"error": "yt-dlp not installed", "duration_seconds": None}
+    except Exception as e:
+        return {"error": str(e), "duration_seconds": None}
+
+
 @app.post("/transcribe/url")
 async def transcribe_url(
     url: str = Form(...),
     hf_token: Optional[str] = Form(None),
-    model: str = Form("base")
+    model: str = Form(None),
+    duration_seconds: Optional[int] = Form(None)
 ):
     """Transcribe audio from a URL (YouTube, podcast, etc.)."""
     import uuid
+
+    # Smart model selection if not specified
+    if not model or model == 'auto':
+        if duration_seconds:
+            model = select_optimal_model(duration_seconds)
+        else:
+            model = 'base'  # Safe default
+
+    # Calculate dynamic timeout
+    if duration_seconds:
+        timeout = calculate_timeout(duration_seconds, model)
+        estimated_time = int(duration_seconds / MODEL_SPEEDS.get(model, 16)) + 30
+    else:
+        timeout = 1800  # 30 min default if duration unknown
+        estimated_time = None
+
     job_id = str(uuid.uuid4())
     jobs[job_id] = {
         'status': 'queued',
         'progress': 'Starting download...',
         'stage': 'queued',
         'download_percent': 0,
-        'url': url
+        'url': url,
+        'model': model,
+        'duration_seconds': duration_seconds,
+        'timeout': timeout,
+        'estimated_time': estimated_time,
+        'started_at': time.time()
     }
 
     # Start background thread
     thread = threading.Thread(
         target=process_url_transcription,
-        args=(job_id, url, hf_token, model)
+        args=(job_id, url, hf_token, model, timeout)
     )
     thread.start()
 
-    return {"job_id": job_id, "status": "queued"}
+    return {
+        "job_id": job_id,
+        "status": "queued",
+        "model": model,
+        "estimated_time": estimated_time,
+        "timeout": timeout
+    }
 
 
 @app.get("/job/{job_id}")

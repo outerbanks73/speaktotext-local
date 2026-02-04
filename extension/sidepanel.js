@@ -63,7 +63,7 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.4.2';
+const CURRENT_VERSION = '1.5.0';
 const GITHUB_REPO = 'outerbanks73/speaktotext-local';
 
 // Initialize
@@ -186,7 +186,7 @@ async function getHfToken() {
   });
 }
 
-// Transcribe file
+// Transcribe file with auto model selection
 async function transcribeFile(file) {
   const connected = await checkServerConnection();
   if (!connected) {
@@ -197,7 +197,8 @@ async function transcribeFile(file) {
   hideError();
   showProgress('Uploading file...');
 
-  const model = document.getElementById('modelSelect').value;
+  // Use 'base' as default for files (server will handle it)
+  const model = 'base';
 
   // Initialize metadata for this transcription
   currentMetadata = {
@@ -242,7 +243,68 @@ async function transcribeFile(file) {
   }
 }
 
-// Transcribe URL
+// Pre-flight check to get video duration and info
+async function preflightCheck(url) {
+  try {
+    const formData = new FormData();
+    formData.append('url', url);
+
+    const response = await fetch(`${SERVER_URL}/transcribe/preflight`, {
+      method: 'POST',
+      body: formData
+    });
+
+    return await response.json();
+  } catch (e) {
+    console.error('Preflight check failed:', e);
+    return { error: e.message };
+  }
+}
+
+// Show pre-flight confirmation dialog for long videos
+function showPreflightDialog(preflight) {
+  return new Promise((resolve) => {
+    const dialog = document.getElementById('preflightDialog');
+    const title = document.getElementById('preflightTitle');
+    const duration = document.getElementById('preflightDuration');
+    const estimate = document.getElementById('preflightEstimate');
+    const confirmBtn = document.getElementById('preflightConfirm');
+    const cancelBtn = document.getElementById('preflightCancel');
+
+    // Truncate title if too long
+    const displayTitle = preflight.title.length > 40
+      ? preflight.title.substring(0, 37) + '...'
+      : preflight.title;
+
+    title.textContent = displayTitle;
+    duration.textContent = preflight.duration_formatted;
+
+    // Show estimate for recommended model
+    const recommendedModel = preflight.recommended_model;
+    const estTime = preflight.estimates[recommendedModel]?.formatted || 'Unknown';
+    estimate.textContent = `~${estTime}`;
+
+    dialog.style.display = 'flex';
+
+    const cleanup = () => {
+      dialog.style.display = 'none';
+      confirmBtn.onclick = null;
+      cancelBtn.onclick = null;
+    };
+
+    confirmBtn.onclick = () => {
+      cleanup();
+      resolve(preflight);
+    };
+
+    cancelBtn.onclick = () => {
+      cleanup();
+      resolve(null);
+    };
+  });
+}
+
+// Transcribe URL with smart model selection
 async function transcribeUrl(url) {
   const connected = await checkServerConnection();
   if (!connected) {
@@ -251,21 +313,45 @@ async function transcribeUrl(url) {
   }
 
   hideError();
-  showProgress('Downloading audio...');
+  showProgress('Checking video info...');
 
-  const model = document.getElementById('modelSelectUrl').value;
+  // Do preflight check to get duration
+  const preflight = await preflightCheck(url);
+
+  if (preflight.error) {
+    // If preflight fails, proceed anyway with defaults
+    console.warn('Preflight check failed, proceeding with defaults:', preflight.error);
+  }
+
+  // For videos longer than 30 min, show confirmation dialog
+  if (preflight.duration_seconds && preflight.duration_seconds > 1800) {
+    hideProgress();
+    const confirmed = await showPreflightDialog(preflight);
+    if (!confirmed) {
+      return; // User cancelled
+    }
+    showProgress('Starting transcription...');
+  }
 
   // Initialize metadata for this transcription
+  const model = preflight.recommended_model || 'base';
   currentMetadata = {
     source: url,
     source_type: 'url',
     model: model,
+    duration_seconds: preflight.duration_seconds,
+    title: preflight.title,
     processed_at: new Date().toISOString()
   };
 
   const formData = new FormData();
   formData.append('url', url);
-  formData.append('model', model);
+  formData.append('model', 'auto'); // Let server pick the model
+
+  // Pass duration if we have it (enables smart selection on server)
+  if (preflight.duration_seconds) {
+    formData.append('duration_seconds', preflight.duration_seconds);
+  }
 
   const hfToken = await getHfToken();
   if (hfToken) {
@@ -281,6 +367,12 @@ async function transcribeUrl(url) {
     const data = await response.json();
     if (data.job_id) {
       currentJobId = data.job_id;
+
+      // Update metadata with server's model choice
+      if (data.model) {
+        currentMetadata.model = data.model;
+      }
+
       // Hand off to background for persistent polling
       chrome.runtime.sendMessage({
         action: 'trackJob',
@@ -370,7 +462,8 @@ async function startRecording() {
 
 // Start real-time transcription session
 async function startRealtimeSession(stream) {
-  const model = document.getElementById('modelSelectRecord').value;
+  // Use 'tiny' for real-time mode (needs to be fast)
+  const model = 'tiny';
 
   try {
     // Start session on server
@@ -512,8 +605,14 @@ async function transcribeRecording(blob) {
   hideError();
   showProgress('Uploading recording...');
 
-  const model = document.getElementById('modelSelectRecord').value;
   const recordingDuration = recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : null;
+
+  // Smart model selection based on recording duration
+  // Short recordings get better quality, long recordings need to be fast
+  let model = 'base';
+  if (recordingDuration && recordingDuration > 1800) {
+    model = 'tiny'; // > 30 min: use tiny for speed
+  }
 
   // Initialize metadata for this transcription
   currentMetadata = {
