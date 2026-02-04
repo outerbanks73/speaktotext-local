@@ -359,6 +359,16 @@ async def add_realtime_chunk(
     temp_file.close()
 
     # Transcribe the chunk using worker subprocess
+    # Dynamic timeout based on model size - larger models need more time
+    model_timeouts = {
+        'tiny': 60, 'tiny.en': 60,
+        'base': 120, 'base.en': 120,
+        'small': 180, 'small.en': 180,
+        'medium': 300, 'medium.en': 300,
+        'large': 600, 'large-v2': 600, 'large-v3': 600
+    }
+    chunk_timeout = model_timeouts.get(session['model'], 120)
+
     try:
         cmd = [
             PYTHON_EXECUTABLE,
@@ -373,7 +383,7 @@ async def add_realtime_chunk(
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             text=True,
-            timeout=60
+            timeout=chunk_timeout
         )
 
         Path(temp_file.name).unlink(missing_ok=True)
@@ -390,6 +400,11 @@ async def add_realtime_chunk(
                 }
 
         return {"status": "ok", "transcript": "", "all_transcripts": session['transcripts']}
+
+    except subprocess.TimeoutExpired:
+        print(f"⚠️  Chunk transcription timed out after {chunk_timeout}s for model {session['model']}")
+        Path(temp_file.name).unlink(missing_ok=True)
+        return {"status": "error", "error": f"Chunk timeout after {chunk_timeout}s - try a faster model"}
 
     except Exception as e:
         Path(temp_file.name).unlink(missing_ok=True)
