@@ -63,7 +63,7 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.4.0';
+const CURRENT_VERSION = '1.4.1';
 const GITHUB_REPO = 'outerbanks73/speaktotext-local';
 
 // Initialize
@@ -74,6 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupButtons();
   await autoPopulateUrlIfStreaming();
   checkForUpdates();
+  await checkActiveJob(); // Check if there's an in-progress job from before
 });
 
 // Check server connection
@@ -224,7 +225,13 @@ async function transcribeFile(file) {
     const data = await response.json();
     if (data.job_id) {
       currentJobId = data.job_id;
-      pollJobStatus();
+      // Hand off to background for persistent polling
+      chrome.runtime.sendMessage({
+        action: 'trackJob',
+        jobId: data.job_id,
+        metadata: currentMetadata
+      });
+      startProgressPolling();
     } else {
       showError('Failed to start transcription');
       hideProgress();
@@ -274,7 +281,13 @@ async function transcribeUrl(url) {
     const data = await response.json();
     if (data.job_id) {
       currentJobId = data.job_id;
-      pollJobStatus();
+      // Hand off to background for persistent polling
+      chrome.runtime.sendMessage({
+        action: 'trackJob',
+        jobId: data.job_id,
+        metadata: currentMetadata
+      });
+      startProgressPolling();
     } else {
       showError(data.error || 'Failed to start transcription');
       hideProgress();
@@ -529,7 +542,13 @@ async function transcribeRecording(blob) {
     const data = await response.json();
     if (data.job_id) {
       currentJobId = data.job_id;
-      pollJobStatus();
+      // Hand off to background for persistent polling
+      chrome.runtime.sendMessage({
+        action: 'trackJob',
+        jobId: data.job_id,
+        metadata: currentMetadata
+      });
+      startProgressPolling();
     } else {
       showError('Failed to start transcription');
       hideProgress();
@@ -540,51 +559,63 @@ async function transcribeRecording(blob) {
   }
 }
 
-// Poll job status
-function pollJobStatus() {
+// Check if there's an active job from background (e.g., from before popup closed)
+async function checkActiveJob() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getJobStatus' });
+    if (response.job) {
+      const job = response.job;
+      currentJobId = job.id;
+      currentMetadata = job.metadata;
+
+      if (job.status === 'completed') {
+        // Job finished while popup was closed
+        currentResult = job.result;
+        showResult(job.result);
+      } else if (job.status === 'error') {
+        showError(job.error);
+      } else if (job.status === 'processing') {
+        // Job still in progress, resume showing progress
+        showProgress(job.progress, job.stage);
+        startProgressPolling();
+      }
+    }
+  } catch (e) {
+    // Background not ready yet, ignore
+  }
+}
+
+// Start polling background for job status (UI updates only)
+function startProgressPolling() {
   if (pollInterval) {
     clearInterval(pollInterval);
   }
 
   pollInterval = setInterval(async () => {
-    if (!currentJobId) {
-      clearInterval(pollInterval);
-      return;
-    }
-
     try {
-      const response = await fetch(`${SERVER_URL}/job/${currentJobId}`);
-      const job = await response.json();
+      const response = await chrome.runtime.sendMessage({ action: 'getJobStatus' });
+      if (!response.job) {
+        clearInterval(pollInterval);
+        return;
+      }
+
+      const job = response.job;
 
       if (job.status === 'completed') {
         clearInterval(pollInterval);
         hideProgress();
-
-        // Enrich metadata from job response
-        if (job.language) {
-          currentMetadata.language = job.language;
-        }
-        if (job.duration) {
-          currentMetadata.duration = job.duration;
-        }
-        if (job.result?.metadata) {
-          currentMetadata = { ...currentMetadata, ...job.result.metadata };
-        }
-
+        currentResult = job.result;
+        currentMetadata = job.metadata;
         showResult(job.result);
       } else if (job.status === 'error') {
         clearInterval(pollInterval);
         hideProgress();
-        let errorMsg = job.error || 'Transcription failed';
-        if (job.error_hint) {
-          errorMsg += `\n\n💡 Tip: ${job.error_hint}`;
-        }
-        showError(errorMsg);
+        showError(job.error);
       } else {
-        // Update progress with stage info
+        // Update progress UI
         const stage = job.stage || 'processing';
         const progress = job.progress || 'Processing...';
-        const downloadPercent = job.download_percent;
+        const downloadPercent = job.downloadPercent;
 
         // Update progress bar for download stage
         if (stage === 'downloading' && downloadPercent !== undefined) {
@@ -598,9 +629,9 @@ function pollJobStatus() {
         updateProgress(progress, stage);
       }
     } catch (e) {
-      // Retry on network error
+      // Background not responding, will retry
     }
-  }, 500); // Poll faster for smoother progress updates
+  }, 500);
 }
 
 // UI helpers
