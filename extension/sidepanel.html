@@ -13,32 +13,32 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      width: 400px;
-      min-height: 300px;
-      background: #f5f5f5;
-      color: #333;
+      width: 100%;
+      min-height: 100vh;
+      background: #faf9f7;
+      color: #1a1a1a;
     }
 
     .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #da7756;
       color: white;
-      padding: 16px;
+      padding: 20px;
       text-align: center;
     }
 
     .header h1 {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 600;
       margin-bottom: 4px;
     }
 
     .header p {
-      font-size: 12px;
+      font-size: 13px;
       opacity: 0.9;
     }
 
     .status-bar {
-      padding: 8px 16px;
+      padding: 10px 16px;
       font-size: 12px;
       display: flex;
       align-items: center;
@@ -72,33 +72,33 @@
     .tabs {
       display: flex;
       background: white;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid #e5e2de;
     }
 
     .tab {
       flex: 1;
-      padding: 12px;
+      padding: 14px 8px;
       text-align: center;
       cursor: pointer;
       font-size: 13px;
       font-weight: 500;
-      color: #666;
+      color: #6b6b6b;
       border-bottom: 2px solid transparent;
       transition: all 0.2s;
     }
 
     .tab:hover {
-      background: #f0f0f0;
+      background: #f0ede8;
     }
 
     .tab.active {
-      color: #667eea;
-      border-bottom-color: #667eea;
+      color: #da7756;
+      border-bottom-color: #da7756;
     }
 
     .tab-content {
       display: none;
-      padding: 16px;
+      padding: 20px;
       background: white;
     }
 
@@ -107,30 +107,30 @@
     }
 
     .form-group {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
 
     .form-group label {
       display: block;
       font-size: 13px;
       font-weight: 500;
-      margin-bottom: 6px;
-      color: #444;
+      margin-bottom: 8px;
+      color: #1a1a1a;
     }
 
     .file-input-wrapper {
       position: relative;
-      border: 2px dashed #ccc;
+      border: 2px dashed #e5e2de;
       border-radius: 8px;
-      padding: 24px;
+      padding: 28px;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .file-input-wrapper:hover {
-      border-color: #667eea;
-      background: #f8f9ff;
+      border-color: #da7756;
+      background: #fdf8f6;
     }
 
     .file-input-wrapper.has-file {
@@ -146,13 +146,13 @@
     }
 
     .file-input-wrapper .icon {
-      font-size: 32px;
+      font-size: 36px;
       margin-bottom: 8px;
     }
 
     .file-input-wrapper .text {
       font-size: 13px;
-      color: #666;
+      color: #6b6b6b;
     }
 
     .file-input-wrapper .filename {
@@ -163,23 +163,24 @@
 
     input[type="text"], select {
       width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      font-size: 13px;
+      padding: 12px 14px;
+      border: 1px solid #e5e2de;
+      border-radius: 8px;
+      font-size: 14px;
       transition: border-color 0.2s;
+      background: white;
     }
 
     input[type="text"]:focus, select:focus {
       outline: none;
-      border-color: #667eea;
+      border-color: #da7756;
     }
 
     .btn {
       width: 100%;
-      padding: 12px;
+      padding: 14px;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
@@ -187,12 +188,12 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #da7756;
       color: white;
     }
 
     .btn-primary:hover {
-      opacity: 0.9;
+      background: #c96a4a;
       transform: translateY(-1px);
     }
 
@@ -223,9 +224,9 @@
 
     .progress-section {
       display: none;
-      padding: 16px;
+      padding: 20px;
       background: white;
-      border-top: 1px solid #eee;
+      border-top: 1px solid #e5e2de;
     }
 
     .progress-section.active {
@@ -233,16 +234,16 @@
     }
 
     .progress-bar-container {
-      background: #e9ecef;
+      background: #f0ede8;
       border-radius: 4px;
       height: 8px;
       overflow: hidden;
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
 
     .progress-bar {
       height: 100%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: #da7756;
       width: 0%;
       transition: width 0.3s;
     }
@@ -258,24 +259,24 @@
     }
 
     .progress-text {
-      font-size: 12px;
-      color: #666;
+      font-size: 13px;
+      color: #6b6b6b;
       text-align: center;
     }
 
     .stage-indicator {
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 600;
       text-align: center;
       margin-bottom: 12px;
-      color: #667eea;
+      color: #da7756;
     }
 
     .result-section {
       display: none;
-      padding: 16px;
+      padding: 20px;
       background: white;
-      border-top: 1px solid #eee;
+      border-top: 1px solid #e5e2de;
     }
 
     .result-section.active {
@@ -320,146 +321,25 @@
       opacity: 0.8;
     }
 
-    .result-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .result-header h3 {
-      font-size: 14px;
-      font-weight: 600;
-    }
-
-    .result-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .result-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .result-actions button {
-      padding: 6px 10px;
-      font-size: 11px;
-      border: 1px solid #ddd;
-      background: white;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .result-actions button:hover {
-      background: #f0f0f0;
-    }
-
-    .result-actions button.active {
-      background: #667eea;
-      color: white;
-      border-color: #667eea;
-    }
-
-    .export-dropdown {
-      position: relative;
-      display: inline-block;
-    }
-
-    .export-menu {
-      display: none;
-      position: absolute;
-      right: 0;
-      top: 100%;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      z-index: 100;
-      min-width: 140px;
-    }
-
-    .export-menu.show {
-      display: block;
-    }
-
-    .export-menu button {
-      display: block;
-      width: 100%;
-      padding: 8px 12px;
-      text-align: left;
-      border: none;
-      background: none;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .export-menu button:hover {
-      background: #f0f0f0;
-    }
-
-    .transcript-box {
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 6px;
-      padding: 12px;
-      max-height: 300px;
-      overflow-y: auto;
-      font-size: 13px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-    }
-
-    .transcript-box.editable {
-      background: white;
-      border-color: #667eea;
-      outline: none;
-    }
-
-    .transcript-box.editable:focus {
-      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-    }
-
-    .edit-notice {
-      font-size: 11px;
-      color: #666;
-      margin-top: 8px;
-      display: none;
-    }
-
-    .edit-notice.show {
-      display: block;
-    }
-
-    .speaker-label {
-      font-weight: 600;
-      color: #667eea;
-    }
-
-    .timestamp {
-      color: #999;
-      font-size: 11px;
-    }
-
     .settings-link {
       display: block;
       text-align: center;
-      padding: 12px;
-      font-size: 12px;
-      color: #666;
+      padding: 16px;
+      font-size: 13px;
+      color: #6b6b6b;
       text-decoration: none;
-      border-top: 1px solid #eee;
+      border-top: 1px solid #e5e2de;
+      background: white;
     }
 
     .settings-link:hover {
-      color: #667eea;
+      color: #da7756;
     }
 
     .update-banner {
       background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
       color: white;
-      padding: 10px 16px;
+      padding: 12px 16px;
       font-size: 13px;
       text-align: center;
     }
@@ -478,20 +358,22 @@
     .error-message {
       background: #f8d7da;
       color: #721c24;
-      padding: 12px;
-      border-radius: 6px;
+      padding: 14px;
+      border-radius: 8px;
       font-size: 13px;
-      margin-bottom: 16px;
+      margin: 16px;
     }
 
     .recording-indicator {
       display: none;
       align-items: center;
       gap: 8px;
-      padding: 12px;
+      padding: 14px;
       background: #fff3cd;
       color: #856404;
       font-size: 13px;
+      border-radius: 8px;
+      margin-bottom: 16px;
     }
 
     .recording-indicator.active {
@@ -505,12 +387,31 @@
       border-radius: 50%;
       animation: pulse 1s infinite;
     }
+
+    .url-description {
+      font-size: 13px;
+      color: #6b6b6b;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    #realtimeTranscript {
+      margin-top: 16px;
+      padding: 14px;
+      background: #faf9f7;
+      border: 1px solid #e5e2de;
+      border-radius: 8px;
+      font-size: 13px;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>SpeakToText Local</h1>
-    <p>Transform audio to AI-ready data · v1.4.1</p>
+    <p>Transform audio to AI-ready data · v1.4.2</p>
   </div>
 
   <div id="statusBar" class="status-bar disconnected">
@@ -521,7 +422,7 @@
   <div class="tabs">
     <div class="tab active" data-tab="url">URL</div>
     <div class="tab" data-tab="file">File</div>
-    <div class="tab" data-tab="record">Record this Tab</div>
+    <div class="tab" data-tab="record">Record</div>
   </div>
 
   <div id="errorMessage" class="error-message" style="display: none;"></div>
@@ -554,7 +455,7 @@
 
   <!-- URL Tab -->
   <div id="tab-url" class="tab-content active">
-    <p class="url-description" style="font-size: 13px; color: #666; margin-bottom: 16px;">
+    <p class="url-description">
       We will download, then transcribe and save your clip.
     </p>
     <div class="form-group">
@@ -578,7 +479,7 @@
 
   <!-- Record Tab -->
   <div id="tab-record" class="tab-content">
-    <p style="font-size: 13px; color: #666; margin-bottom: 16px;">
+    <p class="url-description">
       Record audio from the current browser tab. Choose standard or real-time mode.
     </p>
     <div class="recording-indicator" id="recordingIndicator">
@@ -605,10 +506,10 @@
     <button class="btn btn-record" id="startRecordBtn">
       Start Recording
     </button>
-    <button class="btn btn-stop" id="stopRecordBtn" style="display: none; margin-top: 8px;">
+    <button class="btn btn-stop" id="stopRecordBtn" style="display: none; margin-top: 10px;">
       Stop Recording
     </button>
-    <div id="realtimeTranscript" style="display: none; margin-top: 12px; padding: 12px; background: #f8f9fa; border-radius: 6px; font-size: 13px; max-height: 150px; overflow-y: auto;">
+    <div id="realtimeTranscript" style="display: none;">
       <em style="color: #999;">Live transcript will appear here...</em>
     </div>
   </div>
@@ -642,6 +543,6 @@
     ⚙️ Settings (Hugging Face token for speaker identification)
   </a>
 
-  <script src="popup.js"></script>
+  <script src="sidepanel.js"></script>
 </body>
 </html>

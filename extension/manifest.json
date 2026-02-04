@@ -1,26 +1,30 @@
 {
   "manifest_version": 3,
   "name": "SpeakToText Local",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Transform audio into AI-ready data. Transcribe with Whisper, identify speakers, and export to JSON, Markdown, SRT for LLM workflows and knowledge bases.",
   "permissions": [
     "storage",
     "tabCapture",
     "activeTab",
     "offscreen",
-    "alarms"
+    "alarms",
+    "sidePanel"
   ],
   "host_permissions": [
     "http://localhost:5123/*"
   ],
   "action": {
-    "default_popup": "popup.html",
+    "default_title": "Open SpeakToText Local",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
   },
   "options_page": "options.html",
   "background": {

@@ -1,5 +1,5 @@
 // SpeakToText Local - Background Service Worker
-// Handles persistent job tracking that survives popup closure
+// Handles persistent job tracking and side panel management
 
 const SERVER_URL = 'http://localhost:5123';
 
@@ -12,6 +12,14 @@ chrome.runtime.onInstalled.addListener((details) => {
     console.log('SpeakToText Local installed');
     chrome.tabs.create({ url: 'options.html' });
   }
+
+  // Enable side panel to open on action click
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+});
+
+// Open side panel when extension icon is clicked
+chrome.action.onClicked.addListener(async (tab) => {
+  await chrome.sidePanel.open({ tabId: tab.id });
 });
 
 // Handle messages from popup

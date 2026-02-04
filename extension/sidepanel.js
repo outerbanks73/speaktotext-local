@@ -1,4 +1,4 @@
-// SpeakToText Local - Popup Script
+// SpeakToText Local - Side Panel Script
 
 const SERVER_URL = 'http://localhost:5123';
 
@@ -63,7 +63,7 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.4.1';
+const CURRENT_VERSION = '1.4.2';
 const GITHUB_REPO = 'outerbanks73/speaktotext-local';
 
 // Initialize
@@ -131,16 +131,16 @@ function setupFileUpload() {
   // Drag and drop
   fileDropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    fileDropZone.style.borderColor = '#667eea';
+    fileDropZone.style.borderColor = '#da7756';
   });
 
   fileDropZone.addEventListener('dragleave', () => {
-    fileDropZone.style.borderColor = '#ccc';
+    fileDropZone.style.borderColor = '#e5e2de';
   });
 
   fileDropZone.addEventListener('drop', (e) => {
     e.preventDefault();
-    fileDropZone.style.borderColor = '#ccc';
+    fileDropZone.style.borderColor = '#e5e2de';
     if (e.dataTransfer.files.length > 0) {
       fileInput.files = e.dataTransfer.files;
       fileInput.dispatchEvent(new Event('change'));
@@ -559,7 +559,7 @@ async function transcribeRecording(blob) {
   }
 }
 
-// Check if there's an active job from background (e.g., from before popup closed)
+// Check if there's an active job from background (e.g., from before panel closed)
 async function checkActiveJob() {
   try {
     const response = await chrome.runtime.sendMessage({ action: 'getJobStatus' });
@@ -569,7 +569,7 @@ async function checkActiveJob() {
       currentMetadata = job.metadata;
 
       if (job.status === 'completed') {
-        // Job finished while popup was closed
+        // Job finished while panel was closed
         currentResult = job.result;
         showResult(job.result);
       } else if (job.status === 'error') {
