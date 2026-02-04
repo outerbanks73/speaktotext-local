@@ -36,4 +36,9 @@ fi
 echo -e "${GREEN}Starting server on http://localhost:$PORT${NC}"
 echo ""
 
-python "$SCRIPT_DIR/server/server.py"
+# Use python3 if python is not available
+if command -v python &> /dev/null; then
+    python "$SCRIPT_DIR/server/server.py"
+else
+    python3 "$SCRIPT_DIR/server/server.py"
+fi
