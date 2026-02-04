@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
   setupFileUpload();
   setupButtons();
-  await autoPopulateUrlIfStreaming();
+  await autoPopulateUrl();
   checkForUpdates();
   await checkActiveJob(); // Check if there's an in-progress job from before
 });
@@ -683,8 +683,8 @@ async function showResult(result) {
   });
 }
 
-// Auto-populate URL field with current tab URL if on a streaming site
-async function autoPopulateUrlIfStreaming() {
+// Auto-populate URL field with current tab URL
+async function autoPopulateUrl() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab || !tab.url) return;
@@ -694,18 +694,8 @@ async function autoPopulateUrlIfStreaming() {
       return;
     }
 
-    const url = new URL(tab.url);
-    const hostname = url.hostname.replace(/^www\./, '');
-
-    // Check if current site is a streaming site
-    const isStreamingSite = STREAMING_SITES.some(site =>
-      hostname === site || hostname.endsWith('.' + site)
-    );
-
-    if (isStreamingSite) {
-      // Use the full URL of the current tab
-      document.getElementById('urlInput').value = tab.url;
-    }
+    // Always populate the URL field with the current tab
+    document.getElementById('urlInput').value = tab.url;
   } catch (e) {
     // Silently fail if we can't get the tab URL
   }
