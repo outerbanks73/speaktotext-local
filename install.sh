@@ -109,10 +109,9 @@ create_launcher() {
 #!/bin/bash
 # SpeakToText Local Server Launcher
 
-set -e
-
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PORT=5123
+LOG_FILE="$SCRIPT_DIR/server/server.log"
 
 # Colors
 GREEN='\033[0;32m'
@@ -123,32 +122,46 @@ NC='\033[0m'
 echo "🎙️  SpeakToText Local Server"
 echo "================================"
 
-# Check if port is already in use and kill existing process
-if lsof -ti:$PORT > /dev/null 2>&1; then
-    echo -e "${YELLOW}⚠️  Port $PORT is in use. Stopping existing server...${NC}"
-    lsof -ti:$PORT | xargs kill -9 2>/dev/null || true
-    sleep 1
-    echo -e "${GREEN}✓ Previous server stopped${NC}"
-fi
+# Kill any existing python server.py processes
+echo -e "${YELLOW}Checking for existing server processes...${NC}"
+pkill -9 -f "server\.py" 2>/dev/null || true
+pkill -9 -f "uvicorn" 2>/dev/null || true
+sleep 2
 
-# Also kill any lingering python server.py processes
-pkill -f "python.*server\.py" 2>/dev/null || true
+echo -e "${GREEN}✓ Ready to start${NC}"
 
-# Activate virtual environment if it exists
-if [ -f "$SCRIPT_DIR/server/venv/bin/activate" ]; then
+# Check if virtual environment exists, if not create it
+if [ ! -f "$SCRIPT_DIR/server/venv/bin/activate" ]; then
+    echo -e "${YELLOW}⚠️  No virtual environment found. Creating one...${NC}"
+    python3 -m venv "$SCRIPT_DIR/server/venv"
     source "$SCRIPT_DIR/server/venv/bin/activate"
+    echo "Installing dependencies..."
+    pip install -r "$SCRIPT_DIR/server/requirements.txt"
+    echo -e "${GREEN}✓ Virtual environment created and dependencies installed${NC}"
 else
-    echo -e "${YELLOW}⚠️  No virtual environment found. Using system Python.${NC}"
+    source "$SCRIPT_DIR/server/venv/bin/activate"
 fi
 
 echo -e "${GREEN}Starting server on http://localhost:$PORT${NC}"
+echo "Log file: $LOG_FILE"
 echo ""
 
-# Use python3 if python is not available
-if command -v python &> /dev/null; then
-    python "$SCRIPT_DIR/server/server.py"
+# Start server in background, redirect output to log file
+nohup python "$SCRIPT_DIR/server/server.py" > "$LOG_FILE" 2>&1 &
+SERVER_PID=$!
+
+# Wait a moment and check if it started
+sleep 2
+
+if kill -0 $SERVER_PID 2>/dev/null; then
+    echo -e "${GREEN}✓ Server started successfully (PID: $SERVER_PID)${NC}"
+    echo ""
+    echo "To view logs:  tail -f $LOG_FILE"
+    echo "To stop:       ./stop-server.sh"
 else
-    python3 "$SCRIPT_DIR/server/server.py"
+    echo -e "${RED}✗ Server failed to start. Check logs:${NC}"
+    cat "$LOG_FILE"
+    exit 1
 fi
 EOF
 
@@ -162,8 +175,6 @@ EOF
 #!/bin/bash
 # SpeakToText Local Server Stopper
 
-PORT=5123
-
 # Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -171,16 +182,16 @@ NC='\033[0m'
 
 echo "🛑 Stopping SpeakToText Local Server..."
 
-# Kill by port
-if lsof -ti:$PORT > /dev/null 2>&1; then
-    lsof -ti:$PORT | xargs kill -9 2>/dev/null || true
-    echo -e "${GREEN}✓ Server stopped (port $PORT)${NC}"
-else
-    echo -e "${YELLOW}⚠️  No server running on port $PORT${NC}"
-fi
+# Kill any python server.py or uvicorn processes
+pkill -9 -f "server\.py" 2>/dev/null
+pkill -9 -f "uvicorn" 2>/dev/null
 
-# Also kill any lingering python server.py processes
-pkill -f "python.*server\.py" 2>/dev/null || true
+# Check if any were killed
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}✓ Server stopped${NC}"
+else
+    echo -e "${YELLOW}⚠️  No server processes found${NC}"
+fi
 
 echo "Done."
 EOF
