@@ -1,7 +1,7 @@
 // Transcript Management Page JavaScript
-// SpeakToText Local v1.5.1
+// SpeakToText Local v1.5.2
 
-const CURRENT_VERSION = '1.5.1';
+const CURRENT_VERSION = '1.5.2';
 
 // State
 let currentResult = null;

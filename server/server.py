@@ -207,13 +207,14 @@ def download_audio_from_url(url: str, job_id: str = None) -> str:
             jobs[job_id]['stage'] = 'downloading'
             jobs[job_id]['download_percent'] = 0
 
-        # Optimized yt-dlp command
+        # Optimized yt-dlp command (use android client to avoid YouTube 403 errors)
         process = subprocess.Popen(
             [
                 'yt-dlp', '-x',
                 '--audio-format', 'mp3',
                 '--audio-quality', '128K',
                 '--socket-timeout', '30',
+                '--extractor-args', 'youtube:player_client=android',
                 '--newline',
                 '-o', output_path,
                 url
@@ -535,7 +536,8 @@ async def preflight_check(url: str = Form(...)):
     """
     try:
         result = subprocess.run(
-            ['yt-dlp', '--dump-json', '--no-download', url],
+            ['yt-dlp', '--dump-json', '--no-download',
+             '--extractor-args', 'youtube:player_client=android', url],
             capture_output=True,
             text=True,
             timeout=30
