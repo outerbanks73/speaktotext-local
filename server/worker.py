@@ -27,7 +27,7 @@ def convert_to_wav(input_path: str) -> str:
          '-ac', '1', '-y', temp_wav.name],
         capture_output=True,
         text=True,
-        timeout=300
+        timeout=3600  # 1 hour - sufficient for very long audio files
     )
 
     if result.returncode != 0:
