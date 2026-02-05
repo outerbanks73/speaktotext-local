@@ -63,7 +63,7 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.5.4';
+const CURRENT_VERSION = '1.5.5';
 const GITHUB_REPO = 'outerbanks73/speaktotext-local';
 
 // Initialize
@@ -668,6 +668,7 @@ async function transcribeRecording(blob) {
 // Check if there's an active job from background (e.g., from before panel closed)
 async function checkActiveJob() {
   try {
+    // First check background worker for in-progress jobs
     const response = await chrome.runtime.sendMessage({ action: 'getJobStatus' });
     if (response.job) {
       const job = response.job;
@@ -678,16 +679,32 @@ async function checkActiveJob() {
         // Job finished while panel was closed
         currentResult = job.result;
         showResult(job.result);
+        return;
       } else if (job.status === 'error') {
         showError(job.error);
+        return;
       } else if (job.status === 'processing') {
         // Job still in progress, resume showing progress
         showProgress(job.progress, job.stage);
         startProgressPolling();
+        return;
       }
     }
   } catch (e) {
-    // Background not ready yet, ignore
+    // Background not ready yet, continue to check storage
+  }
+
+  // Check storage for completed transcripts that weren't displayed
+  // (handles case where Chrome restarted the service worker during long transcriptions)
+  try {
+    const stored = await chrome.storage.local.get(['transcriptResult', 'transcriptMetadata']);
+    if (stored.transcriptResult) {
+      currentResult = stored.transcriptResult;
+      currentMetadata = stored.transcriptMetadata || {};
+      showResult(stored.transcriptResult);
+    }
+  } catch (e) {
+    console.log('Error checking storage for transcript:', e);
   }
 }
 
