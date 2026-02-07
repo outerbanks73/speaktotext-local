@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "SpeakToText Local",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "description": "Transform audio into AI-ready data. Transcribe with Whisper, identify speakers, and export to JSON, Markdown, SRT for LLM workflows and knowledge bases.",
   "permissions": [
     "storage",
+    "tabs",
     "tabCapture",
     "activeTab",
     "offscreen",

@@ -63,7 +63,7 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.5.6';
+const CURRENT_VERSION = '1.5.7';
 const GITHUB_REPO = 'outerbanks73/speaktotext-local';
 
 // Initialize
@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
   setupFileUpload();
   setupButtons();
+  setupUrlTitlePreview();
   await autoPopulateUrl();
   checkForUpdates();
   await checkActiveJob(); // Check if there's an in-progress job from before
@@ -805,9 +806,69 @@ async function autoPopulateUrl() {
 
     // Always populate the URL field with the current tab
     document.getElementById('urlInput').value = tab.url;
+
+    // Also fetch and show the title
+    try {
+      const preflight = await preflightCheck(tab.url);
+      if (preflight && preflight.title && !preflight.error) {
+        showVideoTitle(preflight.title);
+      }
+    } catch (e) {
+      // Silently fail title fetch
+    }
   } catch (e) {
     // Silently fail if we can't get the tab URL
   }
+}
+
+// Setup URL input listener for title preview
+function setupUrlTitlePreview() {
+  const urlInput = document.getElementById('urlInput');
+  let debounceTimer;
+
+  urlInput.addEventListener('input', (e) => {
+    clearTimeout(debounceTimer);
+    const url = e.target.value.trim();
+
+    // Hide title if URL is cleared
+    if (!url) {
+      hideVideoTitle();
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      return; // Invalid URL, don't fetch
+    }
+
+    // Debounce: wait 600ms after user stops typing
+    debounceTimer = setTimeout(async () => {
+      const preflight = await preflightCheck(url);
+      if (preflight && preflight.title && !preflight.error) {
+        showVideoTitle(preflight.title);
+      } else {
+        hideVideoTitle();
+      }
+    }, 600);
+  });
+}
+
+// Show video title above URL input
+function showVideoTitle(title) {
+  const display = document.getElementById('videoTitleDisplay');
+  const titleEl = document.getElementById('videoTitle');
+
+  // Truncate long titles
+  const displayTitle = title.length > 70 ? title.substring(0, 67) + '...' : title;
+  titleEl.textContent = displayTitle;
+  display.style.display = 'block';
+}
+
+// Hide video title display
+function hideVideoTitle() {
+  document.getElementById('videoTitleDisplay').style.display = 'none';
 }
 
 // Check for updates from GitHub

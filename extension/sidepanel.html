@@ -480,12 +480,33 @@
       overflow-y: auto;
       line-height: 1.6;
     }
+
+    /* Video title preview */
+    .video-title-display {
+      background: #e8f0f8;
+      border-left: 4px solid #1e3a5f;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+    }
+    .video-title-display .title-label {
+      font-size: 11px;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .video-title-display .title-text {
+      font-weight: 600;
+      color: #1e3a5f;
+      word-break: break-word;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>SpeakToText Local</h1>
-    <p>Transform audio to AI-ready data · v1.5.6</p>
+    <p>Transform audio to AI-ready data · v1.5.7</p>
   </div>
 
   <div id="statusBar" class="status-bar disconnected">
@@ -522,6 +543,13 @@
     <p class="url-description">
       Paste any video or audio URL. We'll automatically pick the best settings.
     </p>
+
+    <!-- Video title preview -->
+    <div id="videoTitleDisplay" class="video-title-display" style="display: none;">
+      <div class="title-label">Detected:</div>
+      <div id="videoTitle" class="title-text"></div>
+    </div>
+
     <div class="form-group">
       <label>Audio/Video URL</label>
       <input type="text" id="urlInput" placeholder="YouTube, podcast, or direct audio URL">
