@@ -1,10 +1,15 @@
 // Transcript Management Page JavaScript
-// Voxly v1.7.0
+// Voxly v1.7.2
 
-const CURRENT_VERSION = '1.7.1';
+const CURRENT_VERSION = '1.7.2';
 
 // ExtensionPay for premium subscriptions
 const extpay = ExtPay('voxly'); // TODO: Replace with your ExtensionPay extension ID
+
+// Helper: Check if speaker is valid (not null, undefined, or the string "null")
+function isValidSpeaker(speaker) {
+  return speaker && speaker !== 'null' && speaker !== 'undefined';
+}
 
 // State
 let currentResult = null;
@@ -109,7 +114,7 @@ function displaySegmented() {
     const headerDiv = document.createElement('div');
     headerDiv.className = 'segment-header';
 
-    if (seg.speaker) {
+    if (isValidSpeaker(seg.speaker)) {
       const speakerSpan = document.createElement('span');
       speakerSpan.className = 'speaker-label';
       speakerSpan.textContent = seg.speaker;
@@ -142,7 +147,7 @@ function displayParagraph() {
     const headerDiv = document.createElement('div');
     headerDiv.className = 'paragraph-header';
 
-    if (para.speaker) {
+    if (isValidSpeaker(para.speaker)) {
       const speakerSpan = document.createElement('span');
       speakerSpan.className = 'paragraph-speaker';
       speakerSpan.textContent = para.speaker;
@@ -172,7 +177,7 @@ function displayProse() {
   let lastSpeaker = null;
 
   currentResult.segments.forEach(seg => {
-    if (seg.speaker && seg.speaker !== lastSpeaker) {
+    if (isValidSpeaker(seg.speaker) && seg.speaker !== lastSpeaker) {
       if (lastSpeaker !== null) {
         proseDiv.appendChild(document.createElement('br'));
         proseDiv.appendChild(document.createElement('br'));
@@ -693,7 +698,7 @@ function getFormattedText() {
   switch (currentFormat) {
     case 'segmented':
       return currentResult.segments.map(seg => {
-        if (seg.speaker) {
+        if (isValidSpeaker(seg.speaker)) {
           return `[${seg.timestamp}] ${seg.speaker}: ${seg.text}`;
         }
         return `[${seg.timestamp}] ${seg.text}`;
@@ -702,7 +707,7 @@ function getFormattedText() {
     case 'paragraph':
       const paragraphs = groupSegmentsIntoParagraphs(currentResult.segments);
       return paragraphs.map(para => {
-        const header = para.speaker ? `[${para.startTime}] ${para.speaker}:` : `[${para.startTime}]`;
+        const header = isValidSpeaker(para.speaker) ? `[${para.startTime}] ${para.speaker}:` : `[${para.startTime}]`;
         return `${header}\n${para.texts.join(' ')}`;
       }).join('\n\n');
 
@@ -710,7 +715,7 @@ function getFormattedText() {
       let prose = '';
       let lastSpeaker = null;
       currentResult.segments.forEach(seg => {
-        if (seg.speaker && seg.speaker !== lastSpeaker) {
+        if (isValidSpeaker(seg.speaker) && seg.speaker !== lastSpeaker) {
           if (lastSpeaker !== null) prose += '\n\n';
           prose += `${seg.speaker}: `;
           lastSpeaker = seg.speaker;
@@ -814,7 +819,7 @@ tool: Voxly v${CURRENT_VERSION}
   if (currentFormat === 'prose' && currentResult?.segments) {
     let lastSpeaker = null;
     currentResult.segments.forEach(seg => {
-      if (seg.speaker && seg.speaker !== lastSpeaker) {
+      if (isValidSpeaker(seg.speaker) && seg.speaker !== lastSpeaker) {
         if (lastSpeaker !== null) md += '\n\n';
         md += `**${seg.speaker}:** `;
         lastSpeaker = seg.speaker;
@@ -824,7 +829,7 @@ tool: Voxly v${CURRENT_VERSION}
   } else if (currentFormat === 'paragraph' && currentResult?.segments) {
     const paragraphs = groupSegmentsIntoParagraphs(currentResult.segments);
     paragraphs.forEach(para => {
-      if (para.speaker) {
+      if (isValidSpeaker(para.speaker)) {
         md += `**[${para.startTime}] ${para.speaker}:**\n${para.texts.join(' ')}\n\n`;
       } else {
         md += `**[${para.startTime}]** ${para.texts.join(' ')}\n\n`;
@@ -832,9 +837,8 @@ tool: Voxly v${CURRENT_VERSION}
     });
   } else if (currentResult?.segments) {
     currentResult.segments.forEach(seg => {
-      if (seg.speaker) {
-        const speaker = seg.speaker || 'Speaker';
-        md += `**[${seg.timestamp}] ${speaker}:**\n${seg.text}\n\n`;
+      if (isValidSpeaker(seg.speaker)) {
+        md += `**[${seg.timestamp}] ${seg.speaker}:**\n${seg.text}\n\n`;
       } else {
         md += `**[${seg.timestamp}]** ${seg.text}\n\n`;
       }
@@ -863,7 +867,7 @@ ${currentResult?.full_text || ''}
 
     srt += `${index + 1}\n`;
     srt += `${formatSRTTime(startTime)} --> ${formatSRTTime(endTime)}\n`;
-    if (seg.speaker) {
+    if (isValidSpeaker(seg.speaker)) {
       srt += `[${seg.speaker}] `;
     }
     srt += `${seg.text}\n\n`;
@@ -889,7 +893,7 @@ ${currentResult?.full_text || ''}
     const endTime = nextSeg ? parseTimestamp(nextSeg.timestamp) : addSeconds(startTime, 5);
 
     vtt += `${formatVTTTime(startTime)} --> ${formatVTTTime(endTime)}\n`;
-    if (seg.speaker) {
+    if (isValidSpeaker(seg.speaker)) {
       vtt += `<v ${seg.speaker}>`;
     }
     vtt += `${seg.text}\n\n`;
