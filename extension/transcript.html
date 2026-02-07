@@ -659,6 +659,40 @@
         page-break-inside: avoid;
       }
     }
+
+    /* Timestamp hyperlinks */
+    .timestamp-link {
+      color: #667eea;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .timestamp-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Transcript section header */
+    .transcript-section {
+      margin-top: 20px;
+    }
+    .transcript-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eee;
+    }
+    .transcript-header h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #333;
+    }
+
+    /* Summary actions container */
+    .summary-actions {
+      display: flex;
+      gap: 8px;
+    }
   </style>
 </head>
 <body>
@@ -712,9 +746,9 @@
       <!-- Format Toggle & Action Bar -->
       <div class="format-bar">
         <div class="format-toggle">
-          <button class="format-btn" data-format="segmented">Segmented</button>
-          <button class="format-btn active" data-format="paragraph">Paragraph</button>
-          <button class="format-btn" data-format="prose">Prose</button>
+          <button class="format-btn" data-format="segmented">Segmented Timestamps</button>
+          <button class="format-btn active" data-format="paragraph">Regular</button>
+          <button class="format-btn" data-format="prose">No Timestamps</button>
         </div>
 
         <div class="action-bar">
@@ -736,21 +770,29 @@
         </div>
       </div>
 
-      <!-- Summary Section (Premium) -->
+      <!-- Summary Section -->
       <div id="summarySection" class="summary-section">
         <div class="summary-header">
           <h3>📝 AI Summary</h3>
-          <button class="btn btn-secondary" id="copySummaryBtn" style="padding: 8px 12px; font-size: 12px;">Copy</button>
+          <div class="summary-actions">
+            <button class="btn btn-secondary" id="editSummaryBtn" style="padding: 8px 12px; font-size: 12px;">✏️ Edit</button>
+            <button class="btn btn-secondary" id="copySummaryBtn" style="padding: 8px 12px; font-size: 12px;">Copy</button>
+          </div>
         </div>
         <div id="summaryContent" class="summary-content"></div>
       </div>
 
-      <!-- Transcript Container -->
-      <div class="transcript-container" id="transcriptContainer">
-        <div class="empty-state" id="emptyState">
-          <div class="icon">📭</div>
-          <h2>No transcript available</h2>
-          <p>Complete a transcription from the extension to see it here.</p>
+      <!-- Transcript Section -->
+      <div class="transcript-section">
+        <div class="transcript-header">
+          <h3 id="transcriptLabel">📄 Regular</h3>
+        </div>
+        <div class="transcript-container" id="transcriptContainer">
+          <div class="empty-state" id="emptyState">
+            <div class="icon">📭</div>
+            <h2>No transcript available</h2>
+            <p>Complete a transcription from the extension to see it here.</p>
+          </div>
         </div>
       </div>
 

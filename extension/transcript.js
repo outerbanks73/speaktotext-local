@@ -1,7 +1,7 @@
 // Transcript Management Page JavaScript
 // Voxly v1.7.2
 
-const CURRENT_VERSION = '1.7.4';
+const CURRENT_VERSION = '1.8.0';
 
 // ExtensionPay for premium subscriptions
 const extpay = ExtPay('voxly'); // TODO: Replace with your ExtensionPay extension ID
@@ -9,6 +9,26 @@ const extpay = ExtPay('voxly'); // TODO: Replace with your ExtensionPay extensio
 // Helper: Check if speaker is valid (not null, undefined, or the string "null")
 function isValidSpeaker(speaker) {
   return speaker && speaker !== 'null' && speaker !== 'undefined';
+}
+
+// Helper: Create YouTube timestamp URL from seconds
+function createYouTubeTimestampUrl(seconds) {
+  if (!currentMetadata?.source) return null;
+  const url = currentMetadata.source;
+
+  // Extract video ID from various YouTube URL formats
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) {
+      const videoId = match[1];
+      return `https://youtube.com/watch?v=${videoId}&t=${Math.floor(seconds)}s`;
+    }
+  }
+  return null;
 }
 
 // State
@@ -67,14 +87,17 @@ async function loadTranscriptData() {
         displayMetadata();
         displayTranscript();
 
-        // Display saved summary if available
+        // Display saved summary if available, or auto-generate if not
         if (currentMetadata.summary) {
           const summarySection = document.getElementById('summarySection');
           const summaryContent = document.getElementById('summaryContent');
           if (summarySection && summaryContent) {
             summarySection.classList.add('active');
-            summaryContent.textContent = currentMetadata.summary;
+            summaryContent.innerHTML = currentMetadata.summary;
           }
+        } else if (currentResult?.full_text) {
+          // Auto-generate summary on load if not already present
+          autoGenerateSummary();
         }
       } else {
         showEmptyState();
@@ -82,6 +105,32 @@ async function loadTranscriptData() {
       resolve();
     });
   });
+}
+
+// Auto-generate AI summary on page load
+async function autoGenerateSummary() {
+  const apiKey = await getOpenAIApiKey();
+  if (!apiKey) {
+    console.log('[Voxly] No OpenAI API key - skipping auto-summary');
+    return;
+  }
+
+  const summarySection = document.getElementById('summarySection');
+  const summaryContent = document.getElementById('summaryContent');
+
+  summarySection.classList.add('active');
+  summaryContent.innerHTML = '<div class="summary-loading"><div class="spinner"></div>Generating AI Summary...</div>';
+
+  try {
+    const summary = await generateSummary(apiKey, currentResult.full_text);
+    summaryContent.innerHTML = summary;
+    currentMetadata.summary = summary;
+    await chrome.storage.local.set({ transcriptMetadata: currentMetadata });
+    showStatus('AI Summary generated!', 'success');
+  } catch (e) {
+    console.error('[Voxly] Auto-summary failed:', e);
+    summaryContent.textContent = 'Failed to generate summary. Click Summarize to try again.';
+  }
 }
 
 // Display the transcript based on current format
@@ -127,10 +176,21 @@ function displaySegmented() {
       headerDiv.appendChild(speakerSpan);
     }
 
-    const timestampSpan = document.createElement('span');
-    timestampSpan.className = 'timestamp';
-    timestampSpan.textContent = `[${seg.timestamp}]`;
-    headerDiv.appendChild(timestampSpan);
+    // Create timestamp as hyperlink if YouTube URL available
+    const timestampUrl = createYouTubeTimestampUrl(seg.start);
+    if (timestampUrl) {
+      const timestampLink = document.createElement('a');
+      timestampLink.href = timestampUrl;
+      timestampLink.target = '_blank';
+      timestampLink.className = 'timestamp-link';
+      timestampLink.textContent = `[${seg.timestamp}]`;
+      headerDiv.appendChild(timestampLink);
+    } else {
+      const timestampSpan = document.createElement('span');
+      timestampSpan.className = 'timestamp';
+      timestampSpan.textContent = `[${seg.timestamp}]`;
+      headerDiv.appendChild(timestampSpan);
+    }
 
     const textDiv = document.createElement('div');
     textDiv.className = 'segment-text';
@@ -160,10 +220,21 @@ function displayParagraph() {
       headerDiv.appendChild(speakerSpan);
     }
 
-    const timeSpan = document.createElement('span');
-    timeSpan.className = 'paragraph-time';
-    timeSpan.textContent = `[${para.startTime}]`;
-    headerDiv.appendChild(timeSpan);
+    // Create timestamp as hyperlink if YouTube URL available
+    const timestampUrl = createYouTubeTimestampUrl(para.startSeconds);
+    if (timestampUrl) {
+      const timeLink = document.createElement('a');
+      timeLink.href = timestampUrl;
+      timeLink.target = '_blank';
+      timeLink.className = 'timestamp-link';
+      timeLink.textContent = `[${para.startTime}]`;
+      headerDiv.appendChild(timeLink);
+    } else {
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'paragraph-time';
+      timeSpan.textContent = `[${para.startTime}]`;
+      headerDiv.appendChild(timeSpan);
+    }
 
     const textDiv = document.createElement('div');
     textDiv.className = 'paragraph-text';
@@ -203,7 +274,7 @@ function displayProse() {
 // Group segments into paragraphs with smart breaking
 function groupSegmentsIntoParagraphs(segments) {
   const paragraphs = [];
-  let currentPara = { speaker: null, texts: [], startTime: null, segmentCount: 0 };
+  let currentPara = { speaker: null, texts: [], startTime: null, startSeconds: 0, segmentCount: 0 };
 
   const MAX_SEGMENTS_PER_PARAGRAPH = 6; // Break every ~6 segments for readability
   const TIME_GAP_THRESHOLD = 10; // Break on 10+ second gaps (natural pauses)
@@ -230,6 +301,7 @@ function groupSegmentsIntoParagraphs(segments) {
         speaker: seg.speaker,
         texts: [seg.text],
         startTime: seg.timestamp,
+        startSeconds: seg.start || 0,
         segmentCount: 1
       };
     } else {
@@ -364,9 +436,25 @@ function setupFormatToggle() {
       formatBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentFormat = btn.dataset.format;
+      updateTranscriptLabel();
       displayTranscript();
     });
   });
+  // Set initial label
+  updateTranscriptLabel();
+}
+
+// Update transcript section label based on current view mode
+function updateTranscriptLabel() {
+  const labels = {
+    'segmented': '📄 Segmented Timestamps',
+    'paragraph': '📄 Regular',
+    'prose': '📄 No Timestamps'
+  };
+  const transcriptLabel = document.getElementById('transcriptLabel');
+  if (transcriptLabel) {
+    transcriptLabel.textContent = labels[currentFormat] || '📄 Transcript';
+  }
 }
 
 // Setup button handlers
@@ -391,6 +479,14 @@ function setupButtons() {
   editMetaBtn.addEventListener('click', () => {
     toggleMetadataEdit();
   });
+
+  // Edit Summary button
+  const editSummaryBtn = document.getElementById('editSummaryBtn');
+  if (editSummaryBtn) {
+    editSummaryBtn.addEventListener('click', () => {
+      toggleSummaryEdit();
+    });
+  }
 
   // Export button
   exportBtn.addEventListener('click', (e) => {
@@ -579,6 +675,36 @@ async function generateSummary(apiKey, text) {
   const maxChars = 100000;
   const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '...' : text;
 
+  // Build YouTube URL for timestamp hyperlinks
+  const youtubeUrl = currentMetadata?.source || '';
+  const isYouTube = youtubeUrl.includes('youtube.com') || youtubeUrl.includes('youtu.be');
+
+  // Extract video ID for timestamp URLs
+  let videoId = '';
+  const videoIdMatch = youtubeUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/);
+  if (videoIdMatch) {
+    videoId = videoIdMatch[1];
+  }
+
+  const systemPrompt = isYouTube
+    ? `As an expert conversationalist, summarize the transcript and format your output into clean paragraphs with titles and bulleted items. As you do this - strategically preserve timestamps and publish timestamps as HTML hyperlinks to the youtube video at that exact timestamp.
+
+When including timestamps, format them as HTML links like this:
+<a href="https://youtube.com/watch?v=${videoId}&t=45s" target="_blank">[00:45]</a>
+
+Use HTML formatting for structure:
+- Use <h3> for section titles
+- Use <ul> and <li> for bullet points
+- Use <p> for paragraphs
+- Use <strong> for emphasis`
+    : `As an expert conversationalist, summarize the transcript and format your output into clean paragraphs with titles and bulleted items. Provide key takeaways with timestamps when relevant.
+
+Use HTML formatting for structure:
+- Use <h3> for section titles
+- Use <ul> and <li> for bullet points
+- Use <p> for paragraphs
+- Use <strong> for emphasis`;
+
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -590,14 +716,14 @@ async function generateSummary(apiKey, text) {
       messages: [
         {
           role: 'system',
-          content: 'You are a helpful assistant that creates concise summaries of transcripts. Provide a clear summary with key points and main takeaways. Use bullet points for key points when appropriate.'
+          content: systemPrompt
         },
         {
           role: 'user',
           content: `Please summarize the following transcript:\n\n${truncatedText}`
         }
       ],
-      max_tokens: 500,
+      max_tokens: 1500,
       temperature: 0.7
     })
   });
@@ -631,6 +757,34 @@ function toggleMetadataEdit() {
   if (!isEditingMetadata) {
     saveMetadataEdits();
     showStatus('Metadata saved', 'success');
+  }
+}
+
+// State for summary editing
+let isEditingSummary = false;
+
+// Toggle summary edit mode
+function toggleSummaryEdit() {
+  isEditingSummary = !isEditingSummary;
+
+  const summaryContent = document.getElementById('summaryContent');
+  const editSummaryBtn = document.getElementById('editSummaryBtn');
+
+  if (summaryContent) {
+    summaryContent.contentEditable = isEditingSummary;
+    summaryContent.classList.toggle('editable', isEditingSummary);
+  }
+
+  if (editSummaryBtn) {
+    editSummaryBtn.classList.toggle('active', isEditingSummary);
+    editSummaryBtn.textContent = isEditingSummary ? '💾 Save' : '✏️ Edit';
+  }
+
+  if (!isEditingSummary && summaryContent) {
+    // Save edited summary
+    currentMetadata.summary = summaryContent.innerHTML;
+    chrome.storage.local.set({ transcriptMetadata: currentMetadata });
+    showStatus('Summary saved', 'success');
   }
 }
 
