@@ -1,4 +1,4 @@
-# SpeakToText Local - Development Guidelines
+# Voxly (formerly SpeakToText Local) - Development Guidelines
 
 ## Chrome Extension Development Lessons Learned
 

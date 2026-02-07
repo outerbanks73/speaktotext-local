@@ -63,8 +63,8 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.5.8';
-const GITHUB_REPO = 'outerbanks73/speaktotext-local';
+const CURRENT_VERSION = '1.6.0';
+const GITHUB_REPO = 'outerbanks73/speaktotext-local'; // TODO: Consider renaming to 'voxly'
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -262,7 +262,7 @@ async function preflightCheck(url) {
   }
 }
 
-// Show pre-flight confirmation dialog for long videos
+// Show pre-flight confirmation dialog for videos
 function showPreflightDialog(preflight) {
   return new Promise((resolve) => {
     const dialog = document.getElementById('preflightDialog');
@@ -271,6 +271,14 @@ function showPreflightDialog(preflight) {
     const estimate = document.getElementById('preflightEstimate');
     const confirmBtn = document.getElementById('preflightConfirm');
     const cancelBtn = document.getElementById('preflightCancel');
+    const extractBtn = document.getElementById('preflightExtract');
+
+    // YouTube transcript elements
+    const ytOption = document.getElementById('youtubeTranscriptOption');
+    const transcriptType = document.getElementById('transcriptType');
+    const transcriptLang = document.getElementById('transcriptLanguage');
+    const langSelector = document.getElementById('languageSelector');
+    const langSelect = document.getElementById('transcriptLanguageSelect');
 
     // Truncate title if too long
     const displayTitle = preflight.title.length > 40
@@ -285,17 +293,70 @@ function showPreflightDialog(preflight) {
     const estTime = preflight.estimates[recommendedModel]?.formatted || 'Unknown';
     estimate.textContent = `~${estTime}`;
 
+    // Check for YouTube transcript availability
+    const ytTranscript = preflight.youtube_transcript;
+    if (ytTranscript && ytTranscript.available && ytTranscript.transcripts.length > 0) {
+      ytOption.style.display = 'block';
+      extractBtn.style.display = 'inline-block';
+
+      // Find the primary transcript (prefer manual over auto-generated)
+      const primaryTranscript = ytTranscript.transcripts.find(t => !t.is_generated)
+        || ytTranscript.transcripts[0];
+
+      transcriptType.textContent = primaryTranscript.is_generated
+        ? '🤖 Auto-generated'
+        : '✍️ Manual captions';
+      transcriptLang.textContent = primaryTranscript.language;
+
+      // Show language selector if multiple languages available
+      if (ytTranscript.transcripts.length > 1) {
+        langSelector.style.display = 'block';
+        langSelect.innerHTML = '';
+        ytTranscript.transcripts.forEach(t => {
+          const option = document.createElement('option');
+          option.value = t.language_code;
+          option.textContent = `${t.language} ${t.is_generated ? '(auto)' : '(manual)'}`;
+          langSelect.appendChild(option);
+        });
+        // Pre-select the primary transcript
+        langSelect.value = primaryTranscript.language_code;
+      } else {
+        langSelector.style.display = 'none';
+      }
+
+      // Update confirm button text to clarify options
+      confirmBtn.textContent = `🎤 Whisper (~${estTime})`;
+    } else {
+      ytOption.style.display = 'none';
+      extractBtn.style.display = 'none';
+      confirmBtn.textContent = '🎤 Transcribe';
+    }
+
     dialog.style.display = 'flex';
 
     const cleanup = () => {
       dialog.style.display = 'none';
       confirmBtn.onclick = null;
       cancelBtn.onclick = null;
+      extractBtn.onclick = null;
     };
 
+    // User chooses Whisper transcription
     confirmBtn.onclick = () => {
       cleanup();
-      resolve(preflight);
+      resolve({ ...preflight, useWhisper: true });
+    };
+
+    // User chooses instant YouTube transcript extraction
+    extractBtn.onclick = () => {
+      cleanup();
+      const selectedLang = langSelect?.value || null;
+      resolve({
+        ...preflight,
+        useWhisper: false,
+        extractTranscript: true,
+        selectedLanguage: selectedLang
+      });
     };
 
     cancelBtn.onclick = () => {
@@ -303,6 +364,68 @@ function showPreflightDialog(preflight) {
       resolve(null);
     };
   });
+}
+
+// Extract YouTube transcript directly (instant)
+async function extractYoutubeTranscript(url, languageCode = null, preflight = {}) {
+  const connected = await checkServerConnection();
+  if (!connected) {
+    showError('Server not running. Please start the local server first.');
+    return;
+  }
+
+  hideError();
+  showProgress('Extracting transcript...');
+
+  const formData = new FormData();
+  formData.append('url', url);
+  if (languageCode) {
+    formData.append('language_code', languageCode);
+  }
+
+  try {
+    const response = await fetch(`${SERVER_URL}/transcribe/youtube/transcript`, {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.detail || 'Failed to extract transcript');
+    }
+
+    const data = await response.json();
+
+    hideProgress();
+
+    // Store result in same format as Whisper results
+    currentResult = data.result;
+    currentMetadata = {
+      source: url,
+      source_type: 'youtube_transcript',
+      title: preflight.title || url,
+      uploader: preflight.uploader || '',
+      upload_date: preflight.upload_date || '',
+      duration_seconds: preflight.duration_seconds,
+      duration: preflight.duration_formatted,
+      language: data.language,
+      transcript_type: data.transcript_type, // 'auto-generated' or 'manual'
+      processed_at: new Date().toISOString(),
+      extraction_method: 'youtube_transcript_api'
+    };
+
+    // Save to storage
+    await chrome.storage.local.set({
+      transcriptResult: currentResult,
+      transcriptMetadata: currentMetadata
+    });
+
+    showResult(currentResult);
+
+  } catch (e) {
+    hideProgress();
+    showError(`Transcript extraction failed: ${e.message}`);
+  }
 }
 
 // Transcribe URL with smart model selection
@@ -316,7 +439,7 @@ async function transcribeUrl(url) {
   hideError();
   showProgress('Checking video info...');
 
-  // Do preflight check to get duration
+  // Do preflight check to get duration and transcript availability
   const preflight = await preflightCheck(url);
 
   // Always show preflight dialog before transcription
@@ -325,6 +448,14 @@ async function transcribeUrl(url) {
   if (!confirmed) {
     return; // User cancelled
   }
+
+  // Check if user chose to extract YouTube transcript
+  if (confirmed.extractTranscript) {
+    await extractYoutubeTranscript(url, confirmed.selectedLanguage, preflight);
+    return;
+  }
+
+  // Otherwise, proceed with Whisper transcription
   showProgress('Starting transcription...');
 
   // Initialize metadata for this transcription

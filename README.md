@@ -1,10 +1,10 @@
-# 🎙️ SpeakToText Local
+# ⚡ Voxly - Instant Transcripts
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-green.svg)](https://developer.chrome.com/docs/extensions/)
 
-**A privacy-focused audio transcription Chrome extension that runs entirely on your machine.** No audio is ever sent to external servers.
+**Transform audio & video into AI-ready transcripts. Instant YouTube extraction or local Whisper transcription.** 100% privacy-focused - runs entirely on your machine.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Powered%20by-OpenAI%20Whisper-orange" alt="Powered by Whisper">
@@ -17,14 +17,14 @@
 
 | Feature | Description |
 |---------|-------------|
+| ⚡ **YouTube Instant** | Extract YouTube transcripts instantly (<1 sec) - no downloading needed! |
 | 📁 **File Upload** | Transcribe audio/video files (MP3, WAV, M4A, MP4, FLAC, etc.) |
-| 🔗 **URL Support** | Transcribe from YouTube, Spotify, podcasts, and 30+ streaming sites (auto-detects URLs) |
-| 🎬 **Tab Recording** | Record and transcribe audio playing in browser tabs (standard or real-time mode) |
+| 🔗 **URL Support** | Transcribe from YouTube, Spotify, podcasts, and 30+ streaming sites |
+| 🎬 **Tab Recording** | Record and transcribe audio playing in browser tabs |
 | 👥 **Speaker Diarization** | Identify who is speaking (optional, requires free Hugging Face account) |
-| ⚡ **Multiple Models** | Choose accuracy vs. speed with different Whisper models |
+| 🎤 **Whisper Models** | Choose accuracy vs. speed with different Whisper models |
 | 🔒 **100% Local** | All processing happens on your machine - complete privacy |
-| ✏️ **Edit & Export** | Edit transcripts in-app, export as TXT, Markdown, SRT, or WebVTT |
-| 📂 **Custom Storage** | Configure where downloaded media files are stored |
+| ✏️ **Edit & Export** | Edit transcripts in-app, export as TXT, Markdown, JSON, SRT, or WebVTT |
 
 ---
 
@@ -32,21 +32,19 @@
 
 ```
 ┌─────────────────────────────────────┐
-│  🎙️ SpeakToText Local              │
-│  Private audio transcription        │
+│  ⚡ Voxly                           │
+│  Instant Transcripts                │
 │                                     │
 │  ┌─────┐ ┌──────┐ ┌─────────────┐  │
 │  │ URL │ │ File │ │Record this Tab│ │
 │  └─────┘ └──────┘ └─────────────┘  │
 │                                     │
-│  We will download, then transcribe  │
-│  and save your clip.                │
+│  ⚡ YouTube transcript available!   │
+│  Extract instantly or use Whisper   │
 │                                     │
 │  🔗 [https://youtube.com/...]       │
 │                                     │
-│  Model: [Base (recommended) ▼]      │
-│                                     │
-│  [    Transcribe URL    ]           │
+│  [⚡ Extract Instant] [🎤 Whisper]  │
 └─────────────────────────────────────┘
 ```
 

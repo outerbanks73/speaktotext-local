@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SpeakToText Local</title>
+  <title>Voxly - Instant Transcripts</title>
   <style>
     * {
       box-sizing: border-box;
@@ -20,7 +20,7 @@
     }
 
     .header {
-      background: #1e3a5f;
+      background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
       color: white;
       padding: 20px;
       text-align: center;
@@ -92,8 +92,8 @@
     }
 
     .tab.active {
-      color: #1e3a5f;
-      border-bottom-color: #1e3a5f;
+      color: #7C3AED;
+      border-bottom-color: #7C3AED;
     }
 
     .tab-content {
@@ -129,7 +129,7 @@
     }
 
     .file-input-wrapper:hover {
-      border-color: #1e3a5f;
+      border-color: #7C3AED;
       background: #fdf8f6;
     }
 
@@ -173,7 +173,7 @@
 
     input[type="text"]:focus, select:focus {
       outline: none;
-      border-color: #1e3a5f;
+      border-color: #7C3AED;
     }
 
     .btn {
@@ -188,7 +188,7 @@
     }
 
     .btn-primary {
-      background: #1e3a5f;
+      background: #7C3AED;
       color: white;
     }
 
@@ -243,7 +243,7 @@
 
     .progress-bar {
       height: 100%;
-      background: #1e3a5f;
+      background: #7C3AED;
       width: 0%;
       transition: width 0.3s;
     }
@@ -269,7 +269,7 @@
       font-weight: 600;
       text-align: center;
       margin-bottom: 12px;
-      color: #1e3a5f;
+      color: #7C3AED;
     }
 
     .result-section {
@@ -333,7 +333,7 @@
     }
 
     .settings-link:hover {
-      color: #1e3a5f;
+      color: #7C3AED;
     }
 
     .update-banner {
@@ -438,6 +438,73 @@
       background: #d4e4f4;
     }
 
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    /* YouTube Transcript Option */
+    .youtube-transcript-option {
+      background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+      border: 1px solid #10b981;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+
+    .transcript-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .badge-icon {
+      font-size: 18px;
+    }
+
+    .badge-text {
+      font-weight: 600;
+      color: #065f46;
+    }
+
+    .transcript-details {
+      display: flex;
+      gap: 12px;
+      font-size: 12px;
+      color: #065f46;
+    }
+
+    .transcript-type {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .language-selector {
+      margin-top: 10px;
+    }
+
+    .language-selector label {
+      font-size: 12px;
+      color: #065f46;
+      margin-right: 8px;
+    }
+
+    .language-selector select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #10b981;
+      background: white;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
     .recording-indicator {
       display: none;
       align-items: center;
@@ -484,7 +551,7 @@
     /* Video title preview */
     .video-title-display {
       background: #e8f0f8;
-      border-left: 4px solid #1e3a5f;
+      border-left: 4px solid #7C3AED;
       padding: 10px 12px;
       margin-bottom: 12px;
       border-radius: 4px;
@@ -497,7 +564,7 @@
     }
     .video-title-display .title-text {
       font-weight: 600;
-      color: #1e3a5f;
+      color: #7C3AED;
       word-break: break-word;
       margin-top: 4px;
     }
@@ -505,8 +572,8 @@
 </head>
 <body>
   <div class="header">
-    <h1>SpeakToText Local</h1>
-    <p>Transform audio to AI-ready data · v1.5.7</p>
+    <h1>⚡ Voxly</h1>
+    <p>Instant Transcripts · v1.6.0</p>
   </div>
 
   <div id="statusBar" class="status-bar disconnected">
@@ -595,14 +662,39 @@
           <span class="label">Duration:</span>
           <span id="preflightDuration" class="value"></span>
         </div>
-        <div class="preflight-row">
-          <span class="label">Estimated time:</span>
+        <div class="preflight-row" id="whisperEstimateRow">
+          <span class="label">Whisper estimate:</span>
           <span id="preflightEstimate" class="value"></span>
         </div>
       </div>
+
+      <!-- YouTube Transcript Option -->
+      <div id="youtubeTranscriptOption" class="youtube-transcript-option" style="display: none;">
+        <div class="transcript-badge">
+          <span class="badge-icon">⚡</span>
+          <span class="badge-text">YouTube transcript available!</span>
+        </div>
+        <div class="transcript-details">
+          <span id="transcriptType" class="transcript-type"></span>
+          <span id="transcriptLanguage" class="transcript-lang"></span>
+        </div>
+
+        <!-- Language selector (shown if multiple languages) -->
+        <div id="languageSelector" class="language-selector" style="display: none;">
+          <label>Language:</label>
+          <select id="transcriptLanguageSelect"></select>
+        </div>
+      </div>
+
       <div class="dialog-buttons">
         <button class="btn btn-secondary" id="preflightCancel">Cancel</button>
-        <button class="btn btn-primary" id="preflightConfirm">Transcribe</button>
+        <!-- Extract button for YouTube transcripts -->
+        <button class="btn btn-success" id="preflightExtract" style="display: none;">
+          ⚡ Extract Instant
+        </button>
+        <button class="btn btn-primary" id="preflightConfirm">
+          🎤 Transcribe
+        </button>
       </div>
     </div>
   </div>

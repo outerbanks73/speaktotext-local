@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-SpeakToText Local - Python Server
+Voxly - Python Server (formerly SpeakToText Local)
 
 A FastAPI server that provides audio transcription with speaker diarization.
-Designed to work with the SpeakToText Local Chrome extension.
+Supports instant YouTube transcript extraction and local Whisper transcription.
+Designed to work with the Voxly Chrome extension.
 
 Usage:
     python server.py
@@ -26,11 +27,19 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTa
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
+from urllib.parse import urlparse, parse_qs
+
+# YouTube transcript extraction
+try:
+    from youtube_transcript_api import YouTubeTranscriptApi, TranscriptsDisabled, NoTranscriptFound
+    YOUTUBE_TRANSCRIPT_AVAILABLE = True
+except ImportError:
+    YOUTUBE_TRANSCRIPT_AVAILABLE = False
 
 app = FastAPI(
-    title="SpeakToText Local",
-    description="Local audio transcription server with speaker diarization",
-    version="1.3.0"
+    title="Voxly",
+    description="Instant transcripts - YouTube extraction and local Whisper transcription with speaker diarization",
+    version="1.6.0"
 )
 
 # Allow CORS for Chrome extension
@@ -168,6 +177,113 @@ def cleanup_cache():
                 cache_file.unlink(missing_ok=True)
     except Exception:
         pass  # Ignore cache cleanup errors
+
+
+# ============================================================
+# YouTube Transcript Extraction
+# ============================================================
+
+def extract_youtube_video_id(url: str) -> Optional[str]:
+    """Extract YouTube video ID from various URL formats.
+
+    Supports:
+    - youtube.com/watch?v=VIDEO_ID
+    - youtu.be/VIDEO_ID
+    - youtube.com/embed/VIDEO_ID
+    - youtube.com/v/VIDEO_ID
+    - youtube.com/shorts/VIDEO_ID
+    """
+    if not url:
+        return None
+
+    parsed = urlparse(url)
+
+    if parsed.hostname in ('www.youtube.com', 'youtube.com', 'm.youtube.com'):
+        if parsed.path == '/watch':
+            return parse_qs(parsed.query).get('v', [None])[0]
+        elif parsed.path.startswith('/embed/'):
+            return parsed.path.split('/')[2].split('?')[0]
+        elif parsed.path.startswith('/v/'):
+            return parsed.path.split('/')[2].split('?')[0]
+        elif parsed.path.startswith('/shorts/'):
+            return parsed.path.split('/')[2].split('?')[0]
+    elif parsed.hostname == 'youtu.be':
+        return parsed.path[1:].split('?')[0]  # Remove leading slash and query params
+
+    return None
+
+
+def check_youtube_transcript(video_id: str) -> dict:
+    """Check if YouTube transcript is available and return metadata.
+
+    Returns:
+        {
+            'available': bool,
+            'transcripts': [
+                {
+                    'language': 'English',
+                    'language_code': 'en',
+                    'is_generated': bool,
+                    'is_translatable': bool
+                }
+            ],
+            'error': str or None
+        }
+    """
+    if not YOUTUBE_TRANSCRIPT_AVAILABLE:
+        return {
+            'available': False,
+            'transcripts': [],
+            'error': 'youtube-transcript-api not installed'
+        }
+
+    try:
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+
+        transcripts = []
+        for transcript in transcript_list:
+            transcripts.append({
+                'language': transcript.language,
+                'language_code': transcript.language_code,
+                'is_generated': transcript.is_generated,
+                'is_translatable': transcript.is_translatable
+            })
+
+        return {
+            'available': len(transcripts) > 0,
+            'transcripts': transcripts,
+            'error': None
+        }
+    except TranscriptsDisabled:
+        return {
+            'available': False,
+            'transcripts': [],
+            'error': 'Transcripts are disabled for this video'
+        }
+    except NoTranscriptFound:
+        return {
+            'available': False,
+            'transcripts': [],
+            'error': 'No transcript found for this video'
+        }
+    except Exception as e:
+        return {
+            'available': False,
+            'transcripts': [],
+            'error': str(e)
+        }
+
+
+def format_transcript_timestamp(seconds: float) -> str:
+    """Format seconds to MM:SS or HH:MM:SS timestamp."""
+    total_seconds = int(seconds)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    secs = total_seconds % 60
+
+    if hours > 0:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
 
 
 def get_cache_path(url: str) -> Path:
@@ -551,7 +667,7 @@ async def preflight_check(url: str = Form(...)):
         recommended_model = select_optimal_model(duration_seconds)
         timeout = calculate_timeout(duration_seconds, recommended_model)
 
-        return {
+        response = {
             "duration_seconds": duration_seconds,
             "duration_formatted": format_duration(duration_seconds),
             "title": title,
@@ -559,8 +675,18 @@ async def preflight_check(url: str = Form(...)):
             "upload_date": upload_date,
             "estimates": estimates,
             "recommended_model": recommended_model,
-            "timeout_seconds": timeout
+            "timeout_seconds": timeout,
+            "is_youtube": False,
+            "youtube_transcript": None
         }
+
+        # Check if this is a YouTube URL and if transcript is available
+        video_id = extract_youtube_video_id(url)
+        if video_id:
+            response["is_youtube"] = True
+            response["youtube_transcript"] = check_youtube_transcript(video_id)
+
+        return response
 
     except subprocess.TimeoutExpired:
         return {"error": "Metadata fetch timed out", "duration_seconds": None}
@@ -570,6 +696,118 @@ async def preflight_check(url: str = Form(...)):
         return {"error": "yt-dlp not installed", "duration_seconds": None}
     except Exception as e:
         return {"error": str(e), "duration_seconds": None}
+
+
+@app.post("/transcribe/youtube/transcript")
+async def extract_youtube_transcript_endpoint(
+    url: str = Form(...),
+    language_code: Optional[str] = Form(None)
+):
+    """Extract existing YouTube transcript directly (instant).
+
+    This is much faster than downloading and transcribing with Whisper,
+    as it extracts the existing captions/subtitles from YouTube.
+
+    Args:
+        url: YouTube video URL
+        language_code: Preferred language code (e.g., 'en', 'es').
+                       If not specified, uses first available (prefers manual over auto).
+
+    Returns:
+        Result in same format as Whisper transcription for compatibility.
+    """
+    if not YOUTUBE_TRANSCRIPT_AVAILABLE:
+        raise HTTPException(
+            status_code=501,
+            detail="youtube-transcript-api not installed. Run: pip install youtube-transcript-api"
+        )
+
+    video_id = extract_youtube_video_id(url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail="Invalid YouTube URL")
+
+    try:
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+
+        # Find the requested transcript
+        transcript = None
+        transcript_metadata = None
+
+        if language_code:
+            try:
+                transcript = transcript_list.find_transcript([language_code])
+            except NoTranscriptFound:
+                # Fall back to any available transcript
+                pass
+
+        if not transcript:
+            # Try to get manually created first, then auto-generated
+            try:
+                # Get all available language codes
+                all_transcripts = list(transcript_list)
+                manual_codes = [t.language_code for t in all_transcripts if not t.is_generated]
+                auto_codes = [t.language_code for t in all_transcripts if t.is_generated]
+
+                if manual_codes:
+                    transcript = transcript_list.find_transcript(manual_codes)
+                elif auto_codes:
+                    transcript = transcript_list.find_transcript(auto_codes)
+                else:
+                    raise NoTranscriptFound(video_id, [], None)
+            except NoTranscriptFound:
+                raise HTTPException(
+                    status_code=404,
+                    detail="No transcript found for this video"
+                )
+
+        # Fetch the actual transcript data
+        transcript_data = transcript.fetch()
+
+        transcript_metadata = {
+            'language': transcript.language,
+            'language_code': transcript.language_code,
+            'is_generated': transcript.is_generated
+        }
+
+        # Convert to our standard segment format
+        segments = []
+        for entry in transcript_data:
+            start_seconds = entry['start']
+            segments.append({
+                'timestamp': format_transcript_timestamp(start_seconds),
+                'text': entry['text'].strip().replace('\n', ' '),
+                'start': start_seconds,
+                'duration': entry.get('duration', 0)
+            })
+
+        # Build full text
+        full_text = ' '.join([seg['text'] for seg in segments])
+
+        return {
+            "status": "completed",
+            "result": {
+                "segments": segments,
+                "full_text": full_text
+            },
+            "language": transcript_metadata['language_code'],
+            "transcript_type": "auto-generated" if transcript_metadata['is_generated'] else "manual",
+            "source": "youtube_transcript"
+        }
+
+    except TranscriptsDisabled:
+        raise HTTPException(
+            status_code=404,
+            detail="Transcripts are disabled for this video"
+        )
+    except NoTranscriptFound:
+        raise HTTPException(
+            status_code=404,
+            detail="No transcript found for this video"
+        )
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/transcribe/url")
