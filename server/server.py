@@ -543,6 +543,8 @@ async def preflight_check(url: str = Form(...)):
         metadata = json.loads(result.stdout)
         duration_seconds = int(metadata.get('duration', 0))
         title = metadata.get('title', 'Unknown')
+        uploader = metadata.get('uploader') or metadata.get('channel') or metadata.get('creator', '')
+        upload_date = metadata.get('upload_date', '')  # Format: YYYYMMDD
 
         # Calculate estimates and select optimal model
         estimates = calculate_estimates(duration_seconds)
@@ -553,6 +555,8 @@ async def preflight_check(url: str = Form(...)):
             "duration_seconds": duration_seconds,
             "duration_formatted": format_duration(duration_seconds),
             "title": title,
+            "uploader": uploader,
+            "upload_date": upload_date,
             "estimates": estimates,
             "recommended_model": recommended_model,
             "timeout_seconds": timeout

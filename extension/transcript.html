@@ -20,7 +20,7 @@
     }
 
     .container {
-      max-width: 800px;
+      max-width: 900px;
       margin: 0 auto;
       background: white;
       border-radius: 12px;
@@ -32,9 +32,6 @@
       background: #1e3a5f;
       color: white;
       padding: 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
     }
 
     .header h1 {
@@ -48,49 +45,186 @@
       opacity: 0.9;
     }
 
-    .header-actions {
-      display: flex;
-      gap: 8px;
-    }
-
     .content {
       padding: 24px;
     }
 
-    /* Metadata Panel */
-    .metadata-panel {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 16px;
-      padding: 16px;
+    /* Enhanced Metadata Header */
+    .metadata-header {
       background: #f8fafc;
       border: 1px solid #d4e4f4;
-      border-radius: 8px;
-      margin-bottom: 24px;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
     }
 
-    .metadata-item {
-      text-align: center;
+    .meta-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1e3a5f;
+      margin-bottom: 8px;
+      line-height: 1.3;
     }
 
-    .metadata-item .label {
-      font-size: 11px;
-      text-transform: uppercase;
+    .meta-title.editable {
+      background: #fff;
+      border: 1px dashed #1e3a5f;
+      border-radius: 4px;
+      padding: 4px 8px;
+      outline: none;
+    }
+
+    .meta-source-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+
+    .meta-url {
+      color: #1e3a5f;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .meta-url:hover {
+      text-decoration: underline;
+    }
+
+    .meta-publisher {
+      background: #e8f0f8;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 500;
+      color: #1e3a5f;
+    }
+
+    .meta-publisher.editable {
+      background: #fff;
+      border: 1px dashed #1e3a5f;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #d4e4f4;
+    }
+
+    .meta-row {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+    }
+
+    .meta-label {
+      font-size: 12px;
       color: #6b6b6b;
-      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      min-width: 80px;
     }
 
-    .metadata-item .value {
+    .meta-value {
       font-size: 14px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .meta-value.editable {
+      background: #fff;
+      border: 1px dashed #1e3a5f;
+      border-radius: 4px;
+      padding: 2px 6px;
+      outline: none;
+    }
+
+    .meta-stats {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #d4e4f4;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #6b6b6b;
+    }
+
+    .stat-value {
       font-weight: 600;
       color: #1a1a1a;
+    }
+
+    .edit-meta-btn {
+      margin-top: 12px;
+      padding: 6px 12px;
+      font-size: 12px;
+      background: #e8f0f8;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #1e3a5f;
+    }
+
+    .edit-meta-btn:hover {
+      background: #d4e4f4;
+    }
+
+    .edit-meta-btn.active {
+      background: #1e3a5f;
+      color: white;
+    }
+
+    /* Format Toggle */
+    .format-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .format-toggle {
+      display: flex;
+      background: #e8f0f8;
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .format-btn {
+      padding: 8px 14px;
+      border: none;
+      background: none;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 6px;
+      color: #1e3a5f;
+      transition: all 0.2s;
+    }
+
+    .format-btn:hover {
+      background: rgba(255,255,255,0.5);
+    }
+
+    .format-btn.active {
+      background: white;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
     /* Action Bar */
     .action-bar {
       display: flex;
       gap: 8px;
-      margin-bottom: 16px;
       flex-wrap: wrap;
     }
 
@@ -184,9 +318,9 @@
       border-radius: 8px;
       padding: 20px;
       min-height: 300px;
-      max-height: 500px;
+      max-height: 600px;
       overflow-y: auto;
-      font-size: 14px;
+      font-size: 15px;
       line-height: 1.8;
     }
 
@@ -196,6 +330,7 @@
       outline: none;
     }
 
+    /* Segmented View */
     .segment {
       margin-bottom: 16px;
       padding-bottom: 16px;
@@ -226,6 +361,45 @@
 
     .segment-text {
       color: #1a1a1a;
+    }
+
+    /* Paragraph View */
+    .paragraph {
+      margin-bottom: 20px;
+    }
+
+    .paragraph:last-child {
+      margin-bottom: 0;
+    }
+
+    .paragraph-header {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .paragraph-speaker {
+      font-weight: 700;
+      color: #1e3a5f;
+    }
+
+    .paragraph-time {
+      color: #888;
+    }
+
+    .paragraph-text {
+      color: #1a1a1a;
+    }
+
+    /* Prose View */
+    .prose-content {
+      color: #1a1a1a;
+    }
+
+    .prose-speaker {
+      font-weight: 700;
+      color: #1e3a5f;
     }
 
     /* Edit Notice */
@@ -286,21 +460,6 @@
     .empty-state p {
       font-size: 14px;
     }
-
-    /* Back Link */
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: #1e3a5f;
-      text-decoration: none;
-      font-size: 14px;
-      margin-bottom: 16px;
-    }
-
-    .back-link:hover {
-      text-decoration: underline;
-    }
   </style>
 </head>
 <body>
@@ -308,56 +467,72 @@
     <div class="header">
       <div>
         <h1>📝 Transcript</h1>
-        <p>Manage and export your transcription</p>
+        <p>Manage and export your transcription · v1.5.8</p>
       </div>
     </div>
 
     <div class="content">
       <div class="status-message" id="statusMessage"></div>
 
-      <!-- Metadata Panel -->
-      <div class="metadata-panel" id="metadataPanel">
-        <div class="metadata-item">
-          <div class="label">Source</div>
-          <div class="value" id="metaSource">-</div>
-        </div>
-        <div class="metadata-item">
-          <div class="label">Duration</div>
-          <div class="value" id="metaDuration">-</div>
-        </div>
-        <div class="metadata-item">
-          <div class="label">Words</div>
-          <div class="value" id="metaWords">-</div>
-        </div>
-        <div class="metadata-item">
-          <div class="label">Speakers</div>
-          <div class="value" id="metaSpeakers">-</div>
-        </div>
-        <div class="metadata-item">
-          <div class="label">Language</div>
-          <div class="value" id="metaLanguage">-</div>
-        </div>
-        <div class="metadata-item">
-          <div class="label">Model</div>
-          <div class="value" id="metaModel">-</div>
-        </div>
-      </div>
+      <!-- Enhanced Metadata Header -->
+      <div class="metadata-header" id="metadataHeader" style="display: none;">
+        <div id="metaTitle" class="meta-title" contenteditable="false">Untitled Recording</div>
 
-      <!-- Action Bar -->
-      <div class="action-bar">
-        <button class="btn btn-primary" id="copyBtn">📋 Copy</button>
-        <button class="btn btn-secondary" id="editBtn">✏️ Edit</button>
-        <div class="export-dropdown">
-          <button class="btn btn-secondary" id="exportBtn">💾 Export ▾</button>
-          <div class="export-menu" id="exportMenu">
-            <button id="exportJson">🔧 JSON (.json)</button>
-            <button id="exportMd">📝 Markdown (.md)</button>
-            <button id="exportTxt">📄 Text (.txt)</button>
-            <button id="exportSrt">🎬 Subtitles (.srt)</button>
-            <button id="exportVtt">🎬 WebVTT (.vtt)</button>
+        <div class="meta-source-line">
+          <a id="metaUrl" class="meta-url" href="#" target="_blank" style="display: none;"></a>
+          <span id="metaPublisher" class="meta-publisher" contenteditable="false" style="display: none;"></span>
+        </div>
+
+        <div class="meta-grid">
+          <div class="meta-row">
+            <span class="meta-label">Participants</span>
+            <span id="metaParticipants" class="meta-value" contenteditable="false">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Recorded</span>
+            <span id="metaDate" class="meta-value" contenteditable="false">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Duration</span>
+            <span id="metaDuration" class="meta-value">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Words</span>
+            <span id="metaWords" class="meta-value">-</span>
           </div>
         </div>
-        <button class="btn btn-secondary" id="clearBtn">🗑️ Clear</button>
+
+        <div class="meta-stats">
+          <span class="stat">🌐 Language: <span id="metaLanguage" class="stat-value">-</span></span>
+          <span class="stat">🤖 Model: <span id="metaModel" class="stat-value">-</span></span>
+        </div>
+
+        <button class="edit-meta-btn" id="editMetaBtn">✏️ Edit Metadata</button>
+      </div>
+
+      <!-- Format Toggle & Action Bar -->
+      <div class="format-bar">
+        <div class="format-toggle">
+          <button class="format-btn" data-format="segmented">Segmented</button>
+          <button class="format-btn active" data-format="paragraph">Paragraph</button>
+          <button class="format-btn" data-format="prose">Prose</button>
+        </div>
+
+        <div class="action-bar">
+          <button class="btn btn-primary" id="copyBtn">📋 Copy</button>
+          <button class="btn btn-secondary" id="editBtn">✏️ Edit</button>
+          <div class="export-dropdown">
+            <button class="btn btn-secondary" id="exportBtn">💾 Export ▾</button>
+            <div class="export-menu" id="exportMenu">
+              <button id="exportJson">🔧 JSON (.json)</button>
+              <button id="exportMd">📝 Markdown (.md)</button>
+              <button id="exportTxt">📄 Text (.txt)</button>
+              <button id="exportSrt">🎬 Subtitles (.srt)</button>
+              <button id="exportVtt">🎬 WebVTT (.vtt)</button>
+            </div>
+          </div>
+          <button class="btn btn-secondary" id="clearBtn">🗑️ Clear</button>
+        </div>
       </div>
 
       <!-- Transcript Container -->

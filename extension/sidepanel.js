@@ -63,7 +63,7 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.5.7';
+const CURRENT_VERSION = '1.5.8';
 const GITHUB_REPO = 'outerbanks73/speaktotext-local';
 
 // Initialize
@@ -334,7 +334,10 @@ async function transcribeUrl(url) {
     source_type: 'url',
     model: model,
     duration_seconds: preflight.duration_seconds,
+    duration: preflight.duration_formatted,
     title: preflight.title,
+    uploader: preflight.uploader || '',
+    upload_date: preflight.upload_date || '',
     processed_at: new Date().toISOString()
   };
 

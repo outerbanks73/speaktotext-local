@@ -1,27 +1,33 @@
 // Transcript Management Page JavaScript
-// SpeakToText Local v1.5.7
+// SpeakToText Local v1.5.8
 
-const CURRENT_VERSION = '1.5.4';
+const CURRENT_VERSION = '1.5.8';
 
 // State
 let currentResult = null;
 let currentMetadata = null;
 let isEditing = false;
+let isEditingMetadata = false;
+let currentFormat = 'paragraph'; // Default to paragraph view
 
 // DOM Elements
 const transcriptContainer = document.getElementById('transcriptContainer');
 const emptyState = document.getElementById('emptyState');
-const metadataPanel = document.getElementById('metadataPanel');
+const metadataHeader = document.getElementById('metadataHeader');
 const editNotice = document.getElementById('editNotice');
 const statusMessage = document.getElementById('statusMessage');
 
 // Metadata elements
-const metaSource = document.getElementById('metaSource');
+const metaTitle = document.getElementById('metaTitle');
+const metaUrl = document.getElementById('metaUrl');
+const metaPublisher = document.getElementById('metaPublisher');
+const metaParticipants = document.getElementById('metaParticipants');
+const metaDate = document.getElementById('metaDate');
 const metaDuration = document.getElementById('metaDuration');
 const metaWords = document.getElementById('metaWords');
-const metaSpeakers = document.getElementById('metaSpeakers');
 const metaLanguage = document.getElementById('metaLanguage');
 const metaModel = document.getElementById('metaModel');
+const editMetaBtn = document.getElementById('editMetaBtn');
 
 // Buttons
 const copyBtn = document.getElementById('copyBtn');
@@ -34,6 +40,7 @@ const clearBtn = document.getElementById('clearBtn');
 document.addEventListener('DOMContentLoaded', async () => {
   await loadTranscriptData();
   setupButtons();
+  setupFormatToggle();
 });
 
 // Load transcript data from storage
@@ -43,8 +50,8 @@ async function loadTranscriptData() {
       if (result.transcriptResult) {
         currentResult = result.transcriptResult;
         currentMetadata = result.transcriptMetadata || {};
-        displayTranscript();
         displayMetadata();
+        displayTranscript();
       } else {
         showEmptyState();
       }
@@ -53,58 +60,235 @@ async function loadTranscriptData() {
   });
 }
 
-// Display the transcript
+// Display the transcript based on current format
 function displayTranscript() {
   emptyState.style.display = 'none';
   transcriptContainer.innerHTML = '';
 
-  if (currentResult?.segments && currentResult.segments.length > 0) {
-    // Display segments with speaker labels
-    currentResult.segments.forEach(seg => {
-      const segDiv = document.createElement('div');
-      segDiv.className = 'segment';
+  if (!currentResult?.segments || currentResult.segments.length === 0) {
+    if (currentResult?.full_text) {
+      transcriptContainer.textContent = currentResult.full_text;
+    }
+    return;
+  }
 
-      const headerDiv = document.createElement('div');
-      headerDiv.className = 'segment-header';
-
-      if (seg.speaker) {
-        const speakerSpan = document.createElement('span');
-        speakerSpan.className = 'speaker-label';
-        speakerSpan.textContent = seg.speaker;
-        headerDiv.appendChild(speakerSpan);
-      }
-
-      const timestampSpan = document.createElement('span');
-      timestampSpan.className = 'timestamp';
-      timestampSpan.textContent = `[${seg.timestamp}]`;
-      headerDiv.appendChild(timestampSpan);
-
-      const textDiv = document.createElement('div');
-      textDiv.className = 'segment-text';
-      textDiv.textContent = seg.text;
-
-      segDiv.appendChild(headerDiv);
-      segDiv.appendChild(textDiv);
-      transcriptContainer.appendChild(segDiv);
-    });
-  } else if (currentResult?.full_text) {
-    // Display plain text
-    transcriptContainer.textContent = currentResult.full_text;
+  switch (currentFormat) {
+    case 'segmented':
+      displaySegmented();
+      break;
+    case 'paragraph':
+      displayParagraph();
+      break;
+    case 'prose':
+      displayProse();
+      break;
+    default:
+      displayParagraph();
   }
 }
 
-// Display metadata
+// Segmented view - each segment on its own line
+function displaySegmented() {
+  currentResult.segments.forEach(seg => {
+    const segDiv = document.createElement('div');
+    segDiv.className = 'segment';
+
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'segment-header';
+
+    if (seg.speaker) {
+      const speakerSpan = document.createElement('span');
+      speakerSpan.className = 'speaker-label';
+      speakerSpan.textContent = seg.speaker;
+      headerDiv.appendChild(speakerSpan);
+    }
+
+    const timestampSpan = document.createElement('span');
+    timestampSpan.className = 'timestamp';
+    timestampSpan.textContent = `[${seg.timestamp}]`;
+    headerDiv.appendChild(timestampSpan);
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'segment-text';
+    textDiv.textContent = seg.text;
+
+    segDiv.appendChild(headerDiv);
+    segDiv.appendChild(textDiv);
+    transcriptContainer.appendChild(segDiv);
+  });
+}
+
+// Paragraph view - group consecutive same-speaker segments
+function displayParagraph() {
+  const paragraphs = groupSegmentsIntoParagraphs(currentResult.segments);
+
+  paragraphs.forEach(para => {
+    const paraDiv = document.createElement('div');
+    paraDiv.className = 'paragraph';
+
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'paragraph-header';
+
+    if (para.speaker) {
+      const speakerSpan = document.createElement('span');
+      speakerSpan.className = 'paragraph-speaker';
+      speakerSpan.textContent = para.speaker;
+      headerDiv.appendChild(speakerSpan);
+    }
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'paragraph-time';
+    timeSpan.textContent = `[${para.startTime}]`;
+    headerDiv.appendChild(timeSpan);
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'paragraph-text';
+    textDiv.textContent = para.texts.join(' ');
+
+    paraDiv.appendChild(headerDiv);
+    paraDiv.appendChild(textDiv);
+    transcriptContainer.appendChild(paraDiv);
+  });
+}
+
+// Prose view - continuous text with inline speaker markers
+function displayProse() {
+  const proseDiv = document.createElement('div');
+  proseDiv.className = 'prose-content';
+
+  let lastSpeaker = null;
+
+  currentResult.segments.forEach(seg => {
+    if (seg.speaker && seg.speaker !== lastSpeaker) {
+      if (lastSpeaker !== null) {
+        proseDiv.appendChild(document.createElement('br'));
+        proseDiv.appendChild(document.createElement('br'));
+      }
+      const speakerSpan = document.createElement('span');
+      speakerSpan.className = 'prose-speaker';
+      speakerSpan.textContent = `${seg.speaker}: `;
+      proseDiv.appendChild(speakerSpan);
+      lastSpeaker = seg.speaker;
+    }
+    proseDiv.appendChild(document.createTextNode(seg.text + ' '));
+  });
+
+  transcriptContainer.appendChild(proseDiv);
+}
+
+// Group consecutive segments by speaker
+function groupSegmentsIntoParagraphs(segments) {
+  const paragraphs = [];
+  let currentPara = { speaker: null, texts: [], startTime: null };
+
+  segments.forEach(seg => {
+    if (seg.speaker !== currentPara.speaker) {
+      if (currentPara.texts.length > 0) {
+        paragraphs.push(currentPara);
+      }
+      currentPara = {
+        speaker: seg.speaker,
+        texts: [seg.text],
+        startTime: seg.timestamp
+      };
+    } else {
+      currentPara.texts.push(seg.text);
+    }
+  });
+
+  if (currentPara.texts.length > 0) {
+    paragraphs.push(currentPara);
+  }
+
+  return paragraphs;
+}
+
+// Display enhanced metadata
 function displayMetadata() {
+  if (!currentResult && !currentMetadata) {
+    metadataHeader.style.display = 'none';
+    return;
+  }
+
+  metadataHeader.style.display = 'block';
+
+  // Title
+  const title = currentMetadata?.title || currentMetadata?.source || 'Untitled Recording';
+  metaTitle.textContent = truncateText(title, 100);
+  metaTitle.title = title;
+
+  // URL (only for URL sources)
+  if (currentMetadata?.source_type === 'url' && currentMetadata?.source) {
+    metaUrl.href = currentMetadata.source;
+    metaUrl.textContent = truncateText(currentMetadata.source, 60);
+    metaUrl.style.display = 'inline';
+  } else {
+    metaUrl.style.display = 'none';
+  }
+
+  // Publisher/Channel
+  if (currentMetadata?.uploader) {
+    metaPublisher.textContent = currentMetadata.uploader;
+    metaPublisher.style.display = 'inline';
+  } else {
+    metaPublisher.textContent = 'Add publisher...';
+    metaPublisher.style.display = 'inline';
+    metaPublisher.style.opacity = '0.5';
+  }
+
+  // Participants (speakers)
+  if (currentResult?.speakers && currentResult.speakers.length > 0) {
+    metaParticipants.textContent = currentResult.speakers.join(', ');
+  } else {
+    metaParticipants.textContent = 'Add participants...';
+    metaParticipants.style.opacity = '0.5';
+  }
+
+  // Recorded date
+  if (currentMetadata?.upload_date) {
+    // Format YYYYMMDD to readable date
+    const d = currentMetadata.upload_date;
+    if (d.length === 8) {
+      const year = d.substring(0, 4);
+      const month = d.substring(4, 6);
+      const day = d.substring(6, 8);
+      metaDate.textContent = `${month}/${day}/${year}`;
+    } else {
+      metaDate.textContent = d;
+    }
+  } else if (currentMetadata?.processed_at) {
+    const date = new Date(currentMetadata.processed_at);
+    metaDate.textContent = date.toLocaleDateString();
+  } else {
+    metaDate.textContent = 'Add date...';
+    metaDate.style.opacity = '0.5';
+  }
+
+  // Duration
+  metaDuration.textContent = currentMetadata?.duration || formatDuration(currentMetadata?.duration_seconds) || '-';
+
+  // Word count
   const fullText = currentResult?.full_text || '';
   const wordCount = fullText.split(/\s+/).filter(w => w.length > 0).length;
-
-  metaSource.textContent = truncateText(currentMetadata?.source || '-', 20);
-  metaSource.title = currentMetadata?.source || '';
-  metaDuration.textContent = currentMetadata?.duration || '-';
   metaWords.textContent = wordCount > 0 ? wordCount.toLocaleString() : '-';
-  metaSpeakers.textContent = currentResult?.speakers?.length > 0 ? currentResult.speakers.length : '-';
+
+  // Language
   metaLanguage.textContent = currentMetadata?.language?.toUpperCase() || '-';
+
+  // Model
   metaModel.textContent = currentMetadata?.model || '-';
+}
+
+// Format duration seconds to MM:SS or HH:MM:SS
+function formatDuration(seconds) {
+  if (!seconds) return null;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  if (h > 0) {
+    return `${h}:${pad(m)}:${pad(s)}`;
+  }
+  return `${m}:${pad(s)}`;
 }
 
 // Truncate text for display
@@ -116,14 +300,27 @@ function truncateText(text, maxLength) {
 // Show empty state
 function showEmptyState() {
   emptyState.style.display = 'block';
-  metadataPanel.style.display = 'none';
+  metadataHeader.style.display = 'none';
+}
+
+// Setup format toggle buttons
+function setupFormatToggle() {
+  const formatBtns = document.querySelectorAll('.format-btn');
+  formatBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      formatBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFormat = btn.dataset.format;
+      displayTranscript();
+    });
+  });
 }
 
 // Setup button handlers
 function setupButtons() {
   // Copy button
   copyBtn.addEventListener('click', async () => {
-    const text = getPlainText();
+    const text = getFormattedText();
     try {
       await navigator.clipboard.writeText(text);
       showStatus('Copied to clipboard!', 'success');
@@ -132,9 +329,14 @@ function setupButtons() {
     }
   });
 
-  // Edit button
+  // Edit button (transcript)
   editBtn.addEventListener('click', () => {
     toggleEditMode();
+  });
+
+  // Edit Metadata button
+  editMetaBtn.addEventListener('click', () => {
+    toggleMetadataEdit();
   });
 
   // Export button
@@ -160,7 +362,7 @@ function setupButtons() {
   });
 
   document.getElementById('exportTxt').addEventListener('click', () => {
-    downloadFile(getPlainText(), 'transcript.txt', 'text/plain');
+    downloadFile(getFormattedText(), 'transcript.txt', 'text/plain');
     exportMenu.classList.remove('show');
   });
 
@@ -188,6 +390,57 @@ function setupButtons() {
   });
 }
 
+// Toggle metadata edit mode
+function toggleMetadataEdit() {
+  isEditingMetadata = !isEditingMetadata;
+
+  const editableFields = [metaTitle, metaPublisher, metaParticipants, metaDate];
+
+  editableFields.forEach(field => {
+    field.contentEditable = isEditingMetadata;
+    field.classList.toggle('editable', isEditingMetadata);
+    if (isEditingMetadata) {
+      field.style.opacity = '1';
+    }
+  });
+
+  editMetaBtn.classList.toggle('active', isEditingMetadata);
+  editMetaBtn.textContent = isEditingMetadata ? '💾 Save Metadata' : '✏️ Edit Metadata';
+
+  if (!isEditingMetadata) {
+    saveMetadataEdits();
+    showStatus('Metadata saved', 'success');
+  }
+}
+
+// Save edited metadata
+async function saveMetadataEdits() {
+  // Update metadata object
+  currentMetadata.title = metaTitle.textContent;
+
+  const publisherText = metaPublisher.textContent;
+  if (publisherText && publisherText !== 'Add publisher...') {
+    currentMetadata.uploader = publisherText;
+  }
+
+  const participantsText = metaParticipants.textContent;
+  if (participantsText && participantsText !== 'Add participants...') {
+    // Update speakers array
+    currentResult.speakers = participantsText.split(',').map(s => s.trim()).filter(s => s);
+  }
+
+  const dateText = metaDate.textContent;
+  if (dateText && dateText !== 'Add date...') {
+    currentMetadata.recorded_date = dateText;
+  }
+
+  // Save to storage
+  await chrome.storage.local.set({
+    transcriptResult: currentResult,
+    transcriptMetadata: currentMetadata
+  });
+}
+
 // Toggle edit mode
 function toggleEditMode() {
   isEditing = !isEditing;
@@ -198,7 +451,6 @@ function toggleEditMode() {
   editBtn.textContent = isEditing ? '💾 Save' : '✏️ Edit';
 
   if (!isEditing) {
-    // Save changes
     saveEditedContent();
     showStatus('Changes saved', 'success');
   }
@@ -206,8 +458,8 @@ function toggleEditMode() {
 
 // Save edited content
 async function saveEditedContent() {
-  if (currentResult?.segments) {
-    // Update segments from edited content
+  // For segmented/paragraph view, try to extract from DOM
+  if (currentFormat === 'segmented' && currentResult?.segments) {
     const segments = transcriptContainer.querySelectorAll('.segment');
     segments.forEach((segDiv, index) => {
       if (currentResult.segments[index]) {
@@ -217,10 +469,17 @@ async function saveEditedContent() {
         }
       }
     });
-    // Update full_text
-    currentResult.full_text = currentResult.segments.map(s => s.text).join(' ');
+  } else if (currentFormat === 'paragraph' && currentResult?.segments) {
+    // For paragraph mode, we need to handle differently
+    // Just update full_text from container
+    currentResult.full_text = transcriptContainer.textContent;
   } else if (currentResult) {
     currentResult.full_text = transcriptContainer.textContent;
+  }
+
+  // Regenerate full_text from segments if we have them
+  if (currentResult?.segments) {
+    currentResult.full_text = currentResult.segments.map(s => s.text).join(' ');
   }
 
   // Save to storage
@@ -228,17 +487,44 @@ async function saveEditedContent() {
   displayMetadata(); // Update word count
 }
 
-// Get plain text
-function getPlainText() {
-  if (currentResult?.segments && currentResult.segments.length > 0) {
-    return currentResult.segments.map(seg => {
-      if (seg.speaker) {
-        return `[${seg.timestamp}] ${seg.speaker}: ${seg.text}`;
-      }
-      return `[${seg.timestamp}] ${seg.text}`;
-    }).join('\n\n');
+// Get formatted text based on current view mode
+function getFormattedText() {
+  if (!currentResult?.segments || currentResult.segments.length === 0) {
+    return currentResult?.full_text || transcriptContainer.textContent;
   }
-  return currentResult?.full_text || transcriptContainer.textContent;
+
+  switch (currentFormat) {
+    case 'segmented':
+      return currentResult.segments.map(seg => {
+        if (seg.speaker) {
+          return `[${seg.timestamp}] ${seg.speaker}: ${seg.text}`;
+        }
+        return `[${seg.timestamp}] ${seg.text}`;
+      }).join('\n\n');
+
+    case 'paragraph':
+      const paragraphs = groupSegmentsIntoParagraphs(currentResult.segments);
+      return paragraphs.map(para => {
+        const header = para.speaker ? `[${para.startTime}] ${para.speaker}:` : `[${para.startTime}]`;
+        return `${header}\n${para.texts.join(' ')}`;
+      }).join('\n\n');
+
+    case 'prose':
+      let prose = '';
+      let lastSpeaker = null;
+      currentResult.segments.forEach(seg => {
+        if (seg.speaker && seg.speaker !== lastSpeaker) {
+          if (lastSpeaker !== null) prose += '\n\n';
+          prose += `${seg.speaker}: `;
+          lastSpeaker = seg.speaker;
+        }
+        prose += seg.text + ' ';
+      });
+      return prose.trim();
+
+    default:
+      return currentResult.full_text;
+  }
 }
 
 // Download file helper
@@ -252,7 +538,7 @@ function downloadFile(content, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
-// Generate JSON export with metadata
+// Generate JSON export with enhanced metadata
 function generateJSON() {
   const now = new Date().toISOString();
   const fullText = currentResult?.full_text || '';
@@ -260,8 +546,13 @@ function generateJSON() {
 
   const output = {
     metadata: {
+      title: currentMetadata?.title || 'Untitled',
       source: currentMetadata?.source || 'Unknown',
+      source_type: currentMetadata?.source_type || 'unknown',
+      uploader: currentMetadata?.uploader || null,
+      upload_date: currentMetadata?.upload_date || null,
       duration: currentMetadata?.duration || null,
+      duration_seconds: currentMetadata?.duration_seconds || null,
       word_count: wordCount,
       speakers: currentResult?.speakers || [],
       language: currentMetadata?.language || 'en',
@@ -286,37 +577,69 @@ function generateMarkdown() {
   const wordCount = fullText.split(/\s+/).filter(w => w.length > 0).length;
   const now = new Date().toISOString();
 
-  // Build YAML frontmatter with metadata
+  // Build YAML frontmatter with enhanced metadata
   let md = `---
-title: Transcript
+title: "${currentMetadata?.title || 'Transcript'}"
 date: ${currentMetadata?.processed_at || now}
 type: transcript
 source: "${currentMetadata?.source || 'Unknown'}"
+${currentMetadata?.uploader ? `uploader: "${currentMetadata.uploader}"` : ''}
+${currentMetadata?.upload_date ? `upload_date: ${currentMetadata.upload_date}` : ''}
 ${currentMetadata?.duration ? `duration: ${currentMetadata.duration}` : ''}
 word_count: ${wordCount}
 language: ${currentMetadata?.language || 'en'}
 model: ${currentMetadata?.model || 'base'}
-${currentResult?.speakers?.length > 0 ? `speakers:\n${currentResult.speakers.map(s => `  - ${s}`).join('\n')}` : ''}
+${currentResult?.speakers?.length > 0 ? `speakers:\n${currentResult.speakers.map(s => `  - "${s}"`).join('\n')}` : ''}
 tool: SpeakToText Local v${CURRENT_VERSION}
 ---
 
-# Transcript
+# ${currentMetadata?.title || 'Transcript'}
 
 `;
 
-  // Add metadata summary section
-  if (currentMetadata?.source && currentMetadata.source !== 'Unknown') {
-    md += `> **Source:** ${currentMetadata.source}\n\n`;
+  // Add metadata summary
+  if (currentMetadata?.uploader) {
+    md += `**Publisher:** ${currentMetadata.uploader}\n\n`;
+  }
+  if (currentMetadata?.source && currentMetadata.source_type === 'url') {
+    md += `**Source:** [${truncateText(currentMetadata.source, 50)}](${currentMetadata.source})\n\n`;
+  }
+  if (currentResult?.speakers && currentResult.speakers.length > 0) {
+    md += `**Participants:** ${currentResult.speakers.join(', ')}\n\n`;
+  }
+  if (currentMetadata?.duration) {
+    md += `**Duration:** ${currentMetadata.duration}\n\n`;
   }
 
-  if (currentResult?.speakers && currentResult.speakers.length > 0) {
-    md += `**Speakers:** ${currentResult.speakers.join(', ')}\n\n---\n\n`;
+  md += `---\n\n`;
+
+  // Format transcript based on current view mode
+  if (currentFormat === 'prose' && currentResult?.segments) {
+    let lastSpeaker = null;
     currentResult.segments.forEach(seg => {
-      md += `**[${seg.timestamp}] ${seg.speaker}:**\n${seg.text}\n\n`;
+      if (seg.speaker && seg.speaker !== lastSpeaker) {
+        if (lastSpeaker !== null) md += '\n\n';
+        md += `**${seg.speaker}:** `;
+        lastSpeaker = seg.speaker;
+      }
+      md += seg.text + ' ';
+    });
+  } else if (currentFormat === 'paragraph' && currentResult?.segments) {
+    const paragraphs = groupSegmentsIntoParagraphs(currentResult.segments);
+    paragraphs.forEach(para => {
+      if (para.speaker) {
+        md += `**[${para.startTime}] ${para.speaker}:**\n${para.texts.join(' ')}\n\n`;
+      } else {
+        md += `**[${para.startTime}]** ${para.texts.join(' ')}\n\n`;
+      }
     });
   } else if (currentResult?.segments) {
     currentResult.segments.forEach(seg => {
-      md += `**[${seg.timestamp}]** ${seg.text}\n\n`;
+      if (seg.speaker) {
+        md += `**[${seg.timestamp}] ${seg.speaker}:**\n${seg.text}\n\n`;
+      } else {
+        md += `**[${seg.timestamp}]** ${seg.text}\n\n`;
+      }
     });
   } else {
     md += fullText;
