@@ -1,5 +1,10 @@
-// SpeakToText Local - Background Service Worker
-// Handles persistent job tracking and side panel management
+// Voxly - Background Service Worker
+// Handles persistent job tracking, side panel management, and ExtensionPay
+
+// Initialize ExtensionPay for premium subscriptions
+importScripts('ExtPay.js');
+const extpay = ExtPay('voxly'); // TODO: Replace with your ExtensionPay extension ID
+extpay.startBackground();
 
 const SERVER_URL = 'http://localhost:5123';
 

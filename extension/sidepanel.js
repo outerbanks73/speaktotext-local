@@ -1,6 +1,12 @@
-// SpeakToText Local - Side Panel Script
+// Voxly - Side Panel Script
 
 const SERVER_URL = 'http://localhost:5123';
+
+// ExtensionPay for premium subscriptions
+const extpay = ExtPay('voxly'); // TODO: Replace with your ExtensionPay extension ID
+
+// Free tier limit
+const FREE_LIMIT = 15;
 
 // State
 let currentJobId = null;
@@ -63,7 +69,7 @@ const STREAMING_SITES = [
 ];
 
 // Current extension version
-const CURRENT_VERSION = '1.6.3';
+const CURRENT_VERSION = '1.7.0';
 const GITHUB_REPO = 'outerbanks73/speaktotext-local'; // TODO: Consider renaming to 'voxly'
 
 // Initialize
@@ -72,11 +78,135 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
   setupFileUpload();
   setupButtons();
+  setupUpgradeModal();
   setupUrlTitlePreview();
   await autoPopulateUrl();
+  await updateUsageIndicator();
   checkForUpdates();
   await checkActiveJob(); // Check if there's an in-progress job from before
 });
+
+// Check if user is premium subscriber
+async function isPremiumUser() {
+  try {
+    const user = await extpay.getUser();
+    return user.paid === true;
+  } catch (e) {
+    console.log('ExtPay check failed:', e);
+    return false;
+  }
+}
+
+// Check usage limit for free tier
+async function checkUsageLimit() {
+  // Premium users have unlimited access
+  if (await isPremiumUser()) {
+    return true;
+  }
+
+  // Check free tier usage
+  const { usageCount = 0, usagePeriodStart } = await chrome.storage.local.get(['usageCount', 'usagePeriodStart']);
+
+  // Reset if new month
+  const now = new Date();
+  const periodStart = usagePeriodStart ? new Date(usagePeriodStart) : null;
+  if (!periodStart || now.getMonth() !== periodStart.getMonth() || now.getFullYear() !== periodStart.getFullYear()) {
+    await chrome.storage.local.set({
+      usageCount: 0,
+      usagePeriodStart: now.toISOString()
+    });
+    await updateUsageIndicator();
+    return true;
+  }
+
+  // Check limit
+  if (usageCount >= FREE_LIMIT) {
+    showUpgradeModal();
+    return false;
+  }
+
+  return true;
+}
+
+// Increment usage count after successful transcription
+async function incrementUsage() {
+  const { usageCount = 0 } = await chrome.storage.local.get(['usageCount']);
+  await chrome.storage.local.set({ usageCount: usageCount + 1 });
+  await updateUsageIndicator();
+}
+
+// Update usage indicator in UI
+async function updateUsageIndicator() {
+  const indicator = document.getElementById('usageIndicator');
+  const usageText = document.getElementById('usageText');
+  const upgradeLink = document.getElementById('upgradeLink');
+
+  if (!indicator || !usageText) return;
+
+  // Premium users don't see usage indicator
+  if (await isPremiumUser()) {
+    indicator.style.display = 'none';
+    return;
+  }
+
+  const { usageCount = 0 } = await chrome.storage.local.get(['usageCount']);
+  const remaining = FREE_LIMIT - usageCount;
+
+  indicator.style.display = 'flex';
+  usageText.textContent = `${usageCount} of ${FREE_LIMIT} free transcriptions used`;
+
+  // Add warning color when low
+  if (remaining <= 3) {
+    indicator.classList.add('low');
+  } else {
+    indicator.classList.remove('low');
+  }
+
+  // Setup upgrade link click
+  if (upgradeLink) {
+    upgradeLink.onclick = (e) => {
+      e.preventDefault();
+      showUpgradeModal();
+    };
+  }
+}
+
+// Setup upgrade modal
+function setupUpgradeModal() {
+  const modal = document.getElementById('upgradeModal');
+  const closeBtn = document.getElementById('closeUpgradeModal');
+  const subscribeBtn = document.getElementById('subscribeBtn');
+
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      modal.style.display = 'none';
+    };
+  }
+
+  if (subscribeBtn) {
+    subscribeBtn.onclick = () => {
+      extpay.openPaymentPage();
+      modal.style.display = 'none';
+    };
+  }
+
+  // Close on overlay click
+  if (modal) {
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    };
+  }
+}
+
+// Show upgrade modal
+function showUpgradeModal() {
+  const modal = document.getElementById('upgradeModal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
 
 // Check server connection
 async function checkServerConnection() {
@@ -189,6 +319,11 @@ async function getHfToken() {
 
 // Transcribe file with auto model selection
 async function transcribeFile(file) {
+  // Check usage limit first
+  if (!await checkUsageLimit()) {
+    return;
+  }
+
   const connected = await checkServerConnection();
   if (!connected) {
     showError('Server not running. Please start the local server first.');
@@ -374,6 +509,8 @@ function showPreflightDialog(preflight) {
 
 // Extract YouTube transcript directly (instant)
 async function extractYoutubeTranscript(url, languageCode = null, preflight = {}) {
+  // Note: Usage already checked in transcribeUrl before calling this
+
   const connected = await checkServerConnection();
   if (!connected) {
     showError('Server not running. Please start the local server first.');
@@ -431,6 +568,7 @@ async function extractYoutubeTranscript(url, languageCode = null, preflight = {}
     });
 
     showResult(currentResult);
+    incrementUsage(); // Count successful extraction
 
   } catch (e) {
     hideProgress();
@@ -441,6 +579,11 @@ async function extractYoutubeTranscript(url, languageCode = null, preflight = {}
 
 // Transcribe URL with smart model selection
 async function transcribeUrl(url) {
+  // Check usage limit first
+  if (!await checkUsageLimit()) {
+    return;
+  }
+
   const connected = await checkServerConnection();
   if (!connected) {
     showError('Server not running. Please start the local server first.');
@@ -868,6 +1011,7 @@ function startProgressPolling() {
         currentResult = job.result;
         currentMetadata = job.metadata;
         showResult(job.result);
+        incrementUsage(); // Count successful transcription
       } else if (job.status === 'error') {
         clearInterval(pollInterval);
         hideProgress();

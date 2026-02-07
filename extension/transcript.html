@@ -402,6 +402,182 @@
       color: #0080FF;
     }
 
+    /* Summary Section */
+    .summary-section {
+      display: none;
+      background: linear-gradient(135deg, #f0f7ff 0%, #e8f4ff 100%);
+      border: 1px solid #0080FF;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .summary-section.active {
+      display: block;
+    }
+
+    .summary-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .summary-header h3 {
+      font-size: 16px;
+      color: #0080FF;
+      margin: 0;
+    }
+
+    .summary-content {
+      font-size: 14px;
+      line-height: 1.7;
+      color: #1a1a1a;
+    }
+
+    .summary-loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .summary-loading .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #d4e4f4;
+      border-top-color: #0080FF;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Upgrade Modal */
+    .upgrade-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .upgrade-modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 28px;
+      width: 90%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .upgrade-modal h2 {
+      font-size: 22px;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+
+    .upgrade-modal p {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 24px;
+    }
+
+    .pricing-options {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .plan {
+      flex: 1;
+      padding: 16px 12px;
+      border: 2px solid #e5e5e5;
+      border-radius: 12px;
+      background: #fafafa;
+    }
+
+    .plan.recommended {
+      border-color: #0080FF;
+      background: linear-gradient(135deg, #f0f7ff 0%, #e8f4ff 100%);
+      position: relative;
+    }
+
+    .plan-badge {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0080FF;
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 10px;
+    }
+
+    .plan-name {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+
+    .plan-price {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+
+    .plan-savings {
+      font-size: 11px;
+      color: #10b981;
+      font-weight: 500;
+      margin-top: 4px;
+    }
+
+    .upgrade-features {
+      text-align: left;
+      margin-bottom: 20px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .upgrade-features li {
+      font-size: 13px;
+      color: #444;
+      padding: 6px 0;
+      padding-left: 24px;
+      position: relative;
+    }
+
+    .upgrade-features li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: #10b981;
+      font-weight: bold;
+    }
+
+    .upgrade-modal .btn {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .upgrade-modal .btn-secondary {
+      background: transparent;
+      color: #666;
+      font-weight: 400;
+    }
+
     /* Edit Notice */
     .edit-notice {
       display: none;
@@ -467,7 +643,7 @@
     <div class="header">
       <div>
         <h1>⚡ Voxly Transcript</h1>
-        <p>Manage and export your transcription · v1.6.3</p>
+        <p>Manage and export your transcription · v1.7.0</p>
       </div>
     </div>
 
@@ -520,6 +696,7 @@
 
         <div class="action-bar">
           <button class="btn btn-primary" id="copyBtn">📋 Copy</button>
+          <button class="btn btn-primary" id="summarizeBtn">✨ Summarize</button>
           <button class="btn btn-secondary" id="editBtn">✏️ Edit</button>
           <div class="export-dropdown">
             <button class="btn btn-secondary" id="exportBtn">💾 Export ▾</button>
@@ -533,6 +710,15 @@
           </div>
           <button class="btn btn-secondary" id="clearBtn">🗑️ Clear</button>
         </div>
+      </div>
+
+      <!-- Summary Section (Premium) -->
+      <div id="summarySection" class="summary-section">
+        <div class="summary-header">
+          <h3>📝 AI Summary</h3>
+          <button class="btn btn-secondary" id="copySummaryBtn" style="padding: 8px 12px; font-size: 12px;">Copy</button>
+        </div>
+        <div id="summaryContent" class="summary-content"></div>
       </div>
 
       <!-- Transcript Container -->
@@ -550,6 +736,37 @@
     </div>
   </div>
 
+  <!-- Upgrade Modal -->
+  <div id="upgradeModal" class="upgrade-modal" style="display: none;">
+    <div class="upgrade-modal-content">
+      <h2>✨ Unlock AI Summaries</h2>
+      <p>Get instant AI-powered summaries of any transcript.</p>
+
+      <div class="pricing-options">
+        <div class="plan">
+          <div class="plan-name">Monthly</div>
+          <div class="plan-price">$2.99</div>
+        </div>
+        <div class="plan recommended">
+          <div class="plan-badge">Best Value</div>
+          <div class="plan-name">Yearly</div>
+          <div class="plan-price">$20</div>
+          <div class="plan-savings">Save 44%</div>
+        </div>
+      </div>
+
+      <ul class="upgrade-features">
+        <li>Unlimited transcriptions</li>
+        <li>AI-powered summaries</li>
+        <li>Priority support</li>
+      </ul>
+
+      <button class="btn btn-primary" id="subscribeBtn">Upgrade Now</button>
+      <button class="btn btn-secondary" id="closeUpgradeModal">Maybe Later</button>
+    </div>
+  </div>
+
+  <script src="ExtPay.js"></script>
   <script src="transcript.js"></script>
 </body>
 </html>

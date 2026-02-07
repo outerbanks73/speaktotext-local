@@ -1,7 +1,10 @@
 // Transcript Management Page JavaScript
-// Voxly v1.6.3
+// Voxly v1.7.0
 
-const CURRENT_VERSION = '1.6.3';
+const CURRENT_VERSION = '1.7.0';
+
+// ExtensionPay for premium subscriptions
+const extpay = ExtPay('voxly'); // TODO: Replace with your ExtensionPay extension ID
 
 // State
 let currentResult = null;
@@ -52,6 +55,16 @@ async function loadTranscriptData() {
         currentMetadata = result.transcriptMetadata || {};
         displayMetadata();
         displayTranscript();
+
+        // Display saved summary if available
+        if (currentMetadata.summary) {
+          const summarySection = document.getElementById('summarySection');
+          const summaryContent = document.getElementById('summaryContent');
+          if (summarySection && summaryContent) {
+            summarySection.classList.add('active');
+            summaryContent.textContent = currentMetadata.summary;
+          }
+        }
       } else {
         showEmptyState();
       }
@@ -403,9 +416,175 @@ function setupButtons() {
       showEmptyState();
       transcriptContainer.innerHTML = '';
       emptyState.style.display = 'block';
+      // Also hide summary
+      document.getElementById('summarySection').classList.remove('active');
       showStatus('Transcript cleared', 'success');
     }
   });
+
+  // Summarize button
+  const summarizeBtn = document.getElementById('summarizeBtn');
+  if (summarizeBtn) {
+    summarizeBtn.addEventListener('click', handleSummarize);
+  }
+
+  // Copy summary button
+  const copySummaryBtn = document.getElementById('copySummaryBtn');
+  if (copySummaryBtn) {
+    copySummaryBtn.addEventListener('click', async () => {
+      const summaryContent = document.getElementById('summaryContent');
+      if (summaryContent && summaryContent.textContent) {
+        try {
+          await navigator.clipboard.writeText(summaryContent.textContent);
+          showStatus('Summary copied to clipboard!', 'success');
+        } catch (err) {
+          showStatus('Failed to copy summary', 'error');
+        }
+      }
+    });
+  }
+
+  // Upgrade modal buttons
+  setupUpgradeModal();
+}
+
+// Setup upgrade modal
+function setupUpgradeModal() {
+  const modal = document.getElementById('upgradeModal');
+  const closeBtn = document.getElementById('closeUpgradeModal');
+  const subscribeBtn = document.getElementById('subscribeBtn');
+
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      modal.style.display = 'none';
+    };
+  }
+
+  if (subscribeBtn) {
+    subscribeBtn.onclick = () => {
+      extpay.openPaymentPage();
+      modal.style.display = 'none';
+    };
+  }
+
+  if (modal) {
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    };
+  }
+}
+
+// Show upgrade modal
+function showUpgradeModal() {
+  const modal = document.getElementById('upgradeModal');
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+// Check if user is premium
+async function isPremiumUser() {
+  try {
+    const user = await extpay.getUser();
+    return user.paid === true;
+  } catch (e) {
+    console.log('ExtPay check failed:', e);
+    return false;
+  }
+}
+
+// Get OpenAI API key from storage
+async function getOpenAIApiKey() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(['openaiApiKey'], (result) => {
+      resolve(result.openaiApiKey || '');
+    });
+  });
+}
+
+// Handle summarize button click
+async function handleSummarize() {
+  // Check if user is premium
+  if (!await isPremiumUser()) {
+    showUpgradeModal();
+    return;
+  }
+
+  // Check if we have a transcript
+  if (!currentResult?.full_text) {
+    showStatus('No transcript available to summarize', 'error');
+    return;
+  }
+
+  // Check for API key
+  const apiKey = await getOpenAIApiKey();
+  if (!apiKey) {
+    showStatus('Add your OpenAI API key in Settings to use summarization', 'error');
+    return;
+  }
+
+  // Show loading state
+  const summarySection = document.getElementById('summarySection');
+  const summaryContent = document.getElementById('summaryContent');
+
+  summarySection.classList.add('active');
+  summaryContent.innerHTML = '<div class="summary-loading"><div class="spinner"></div>Generating summary...</div>';
+
+  try {
+    const summary = await generateSummary(apiKey, currentResult.full_text);
+    summaryContent.textContent = summary;
+
+    // Store summary in metadata
+    currentMetadata.summary = summary;
+    await chrome.storage.local.set({
+      transcriptMetadata: currentMetadata
+    });
+
+    showStatus('Summary generated!', 'success');
+  } catch (e) {
+    summaryContent.textContent = 'Failed to generate summary. Please check your API key and try again.';
+    showStatus(`Error: ${e.message}`, 'error');
+  }
+}
+
+// Call OpenAI API to generate summary
+async function generateSummary(apiKey, text) {
+  // Truncate text if too long (GPT-4o-mini has 128k context, but we'll be conservative)
+  const maxChars = 100000;
+  const truncatedText = text.length > maxChars ? text.substring(0, maxChars) + '...' : text;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that creates concise summaries of transcripts. Provide a clear summary with key points and main takeaways. Use bullet points for key points when appropriate.'
+        },
+        {
+          role: 'user',
+          content: `Please summarize the following transcript:\n\n${truncatedText}`
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error?.message || 'API request failed');
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
 
 // Toggle metadata edit mode

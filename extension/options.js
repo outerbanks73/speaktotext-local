@@ -1,4 +1,4 @@
-// SpeakToText Local - Options Script
+// Voxly - Options Script
 
 const SERVER_URL = 'http://localhost:5123';
 
@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadSettings() {
-  chrome.storage.sync.get(['hfToken', 'storageFolder'], (result) => {
+  chrome.storage.sync.get(['hfToken', 'storageFolder', 'openaiApiKey'], (result) => {
     if (result.hfToken) {
       document.getElementById('hfTokenInput').value = result.hfToken;
       updateTokenStatus('saved');
@@ -19,6 +19,10 @@ function loadSettings() {
 
     if (result.storageFolder) {
       document.getElementById('storageFolderInput').value = result.storageFolder;
+    }
+
+    if (result.openaiApiKey) {
+      document.getElementById('openaiKeyInput').value = result.openaiApiKey;
     }
   });
 }
@@ -77,7 +81,7 @@ async function checkServerStatus() {
 }
 
 function setupEventListeners() {
-  // Toggle token visibility
+  // Toggle HF token visibility
   const toggleBtn = document.getElementById('toggleToken');
   const tokenInput = document.getElementById('hfTokenInput');
 
@@ -90,6 +94,40 @@ function setupEventListeners() {
       toggleBtn.textContent = '👁️';
     }
   });
+
+  // Toggle OpenAI key visibility
+  const toggleOpenaiBtn = document.getElementById('toggleOpenaiKey');
+  const openaiKeyInput = document.getElementById('openaiKeyInput');
+
+  if (toggleOpenaiBtn && openaiKeyInput) {
+    toggleOpenaiBtn.addEventListener('click', () => {
+      if (openaiKeyInput.type === 'password') {
+        openaiKeyInput.type = 'text';
+        toggleOpenaiBtn.textContent = '🙈';
+      } else {
+        openaiKeyInput.type = 'password';
+        toggleOpenaiBtn.textContent = '👁️';
+      }
+    });
+  }
+
+  // Save OpenAI API key
+  const saveOpenaiBtn = document.getElementById('saveOpenaiKeyBtn');
+  if (saveOpenaiBtn) {
+    saveOpenaiBtn.addEventListener('click', () => {
+      const key = openaiKeyInput.value.trim();
+      const statusEl = document.getElementById('openaiKeyStatus');
+
+      chrome.storage.sync.set({ openaiApiKey: key }, () => {
+        statusEl.className = 'status-message success';
+        statusEl.textContent = key ? 'API key saved successfully!' : 'API key cleared.';
+
+        setTimeout(() => {
+          statusEl.className = 'status-message';
+        }, 3000);
+      });
+    });
+  }
 
   // Save token
   document.getElementById('saveTokenBtn').addEventListener('click', () => {
