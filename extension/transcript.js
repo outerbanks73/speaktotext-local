@@ -1,7 +1,7 @@
 // Transcript Management Page JavaScript
 // Voxly v1.7.0
 
-const CURRENT_VERSION = '1.7.0';
+const CURRENT_VERSION = '1.7.1';
 
 // ExtensionPay for premium subscriptions
 const extpay = ExtPay('voxly'); // TODO: Replace with your ExtensionPay extension ID
@@ -833,7 +833,8 @@ tool: Voxly v${CURRENT_VERSION}
   } else if (currentResult?.segments) {
     currentResult.segments.forEach(seg => {
       if (seg.speaker) {
-        md += `**[${seg.timestamp}] ${seg.speaker}:**\n${seg.text}\n\n`;
+        const speaker = seg.speaker || 'Speaker';
+        md += `**[${seg.timestamp}] ${speaker}:**\n${seg.text}\n\n`;
       } else {
         md += `**[${seg.timestamp}]** ${seg.text}\n\n`;
       }

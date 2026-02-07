@@ -225,12 +225,20 @@ def run_transcription(audio_path: str, model_name: str, hf_token: str = None) ->
 
                 combined = assign_speakers(result['segments'], diarization_segments)
                 formatted = format_transcript(combined, with_speakers=True)
+                formatted['diarization_status'] = 'success'
+                formatted['diarization_error'] = None
 
             except Exception as e:
-                # If diarization fails, return without speakers
+                # If diarization fails, log error and return without speakers
+                import sys
+                print(f"Diarization failed: {str(e)}", file=sys.stderr)
                 formatted = format_transcript(result['segments'], with_speakers=False)
+                formatted['diarization_status'] = 'failed'
+                formatted['diarization_error'] = str(e)
         else:
             formatted = format_transcript(result['segments'], with_speakers=False)
+            formatted['diarization_status'] = 'skipped'
+            formatted['diarization_error'] = 'No Hugging Face token provided'
 
         return {
             'result': formatted,
