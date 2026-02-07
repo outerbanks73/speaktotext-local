@@ -1,7 +1,7 @@
 // Transcript Management Page JavaScript
-// SpeakToText Local v1.5.8
+// Voxly v1.6.1
 
-const CURRENT_VERSION = '1.5.8';
+const CURRENT_VERSION = '1.6.1';
 
 // State
 let currentResult = null;
@@ -176,23 +176,41 @@ function displayProse() {
   transcriptContainer.appendChild(proseDiv);
 }
 
-// Group consecutive segments by speaker
+// Group segments into paragraphs with smart breaking
 function groupSegmentsIntoParagraphs(segments) {
   const paragraphs = [];
-  let currentPara = { speaker: null, texts: [], startTime: null };
+  let currentPara = { speaker: null, texts: [], startTime: null, segmentCount: 0 };
 
-  segments.forEach(seg => {
-    if (seg.speaker !== currentPara.speaker) {
+  const MAX_SEGMENTS_PER_PARAGRAPH = 6; // Break every ~6 segments for readability
+  const TIME_GAP_THRESHOLD = 10; // Break on 10+ second gaps (natural pauses)
+
+  segments.forEach((seg, index) => {
+    // Detect time gap from previous segment
+    let timeGap = 0;
+    if (index > 0 && seg.start !== undefined && segments[index - 1].start !== undefined) {
+      const prevEnd = segments[index - 1].start + (segments[index - 1].duration || 0);
+      timeGap = seg.start - prevEnd;
+    }
+
+    // Determine if we should start a new paragraph
+    // Break on: speaker change, significant time gap, or too many segments
+    const speakerChanged = seg.speaker !== currentPara.speaker && (seg.speaker || currentPara.speaker);
+    const significantTimeGap = timeGap >= TIME_GAP_THRESHOLD;
+    const tooManySegments = currentPara.segmentCount >= MAX_SEGMENTS_PER_PARAGRAPH;
+
+    if (speakerChanged || significantTimeGap || tooManySegments) {
       if (currentPara.texts.length > 0) {
         paragraphs.push(currentPara);
       }
       currentPara = {
         speaker: seg.speaker,
         texts: [seg.text],
-        startTime: seg.timestamp
+        startTime: seg.timestamp,
+        segmentCount: 1
       };
     } else {
       currentPara.texts.push(seg.text);
+      currentPara.segmentCount++;
     }
   });
 
@@ -559,7 +577,7 @@ function generateJSON() {
       model: currentMetadata?.model || 'base',
       processed_at: currentMetadata?.processed_at || now,
       exported_at: now,
-      tool: 'SpeakToText Local',
+      tool: 'Voxly',
       version: CURRENT_VERSION
     },
     transcript: {
@@ -590,7 +608,7 @@ word_count: ${wordCount}
 language: ${currentMetadata?.language || 'en'}
 model: ${currentMetadata?.model || 'base'}
 ${currentResult?.speakers?.length > 0 ? `speakers:\n${currentResult.speakers.map(s => `  - "${s}"`).join('\n')}` : ''}
-tool: SpeakToText Local v${CURRENT_VERSION}
+tool: Voxly v${CURRENT_VERSION}
 ---
 
 # ${currentMetadata?.title || 'Transcript'}
