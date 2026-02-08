@@ -1,7 +1,7 @@
 // Transcript Management Page JavaScript
-// Voxly v1.8.2
+// Voxly v1.8.3
 
-const CURRENT_VERSION = '1.8.1';
+const CURRENT_VERSION = '1.8.3';
 
 // ExtensionPay for premium subscriptions
 const extpay = ExtPay('voxly'); // TODO: Replace with your ExtensionPay extension ID
@@ -126,12 +126,19 @@ async function loadTranscriptData() {
         updateTranscriptLabel();
         updateTranscriptPreview();
 
+        // Ensure transcript section is expanded so content is visible
+        const transcriptSection = document.getElementById('transcriptSection');
+        if (transcriptSection) {
+          transcriptSection.classList.add('expanded');
+        }
+
         // Display saved summary if available, or auto-generate if not
         if (currentMetadata.summary) {
           const summarySection = document.getElementById('summarySection');
           const summaryContent = document.getElementById('summaryContent');
           if (summarySection && summaryContent) {
             summarySection.style.display = 'block';
+            summarySection.classList.add('expanded');  // Expand so content is visible
             summaryContent.innerHTML = currentMetadata.summary;
             updateSummaryPreview();
           }
@@ -160,6 +167,7 @@ async function autoGenerateSummary() {
   const summaryPreview = document.getElementById('summaryPreview');
 
   summarySection.style.display = 'block';
+  summarySection.classList.add('expanded');  // Expand so content is visible
   summaryContent.innerHTML = '<div class="summary-loading"><div class="spinner"></div>Generating AI Summary...</div>';
   if (summaryPreview) {
     summaryPreview.textContent = 'Generating AI Summary...';
@@ -496,7 +504,7 @@ function setupFormatToggle() {
 function updateTranscriptLabel() {
   const labels = {
     'segmented': '📄 Segmented Timestamps',
-    'paragraph': '📄 Regular',
+    'paragraph': '📄 Full Transcript',
     'prose': '📄 No Timestamps'
   };
   const transcriptLabel = document.getElementById('transcriptLabel');
@@ -697,12 +705,14 @@ async function handleSummarize() {
   const summarySection = document.getElementById('summarySection');
   const summaryContent = document.getElementById('summaryContent');
 
-  summarySection.classList.add('active');
+  summarySection.style.display = 'block';
+  summarySection.classList.add('expanded');  // Expand so content is visible
   summaryContent.innerHTML = '<div class="summary-loading"><div class="spinner"></div>Generating summary...</div>';
 
   try {
     const summary = await generateSummary(apiKey, currentResult.full_text);
-    summaryContent.textContent = summary;
+    summaryContent.innerHTML = summary;  // Use innerHTML since summary contains HTML formatting
+    updateSummaryPreview();
 
     // Store summary in metadata
     currentMetadata.summary = summary;
@@ -712,7 +722,7 @@ async function handleSummarize() {
 
     showStatus('Summary generated!', 'success');
   } catch (e) {
-    summaryContent.textContent = 'Failed to generate summary. Please check your API key and try again.';
+    summaryContent.innerHTML = 'Failed to generate summary. Please check your API key and try again.';
     showStatus(`Error: ${e.message}`, 'error');
   }
 }
